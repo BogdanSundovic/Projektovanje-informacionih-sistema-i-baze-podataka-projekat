@@ -23,7 +23,7 @@ export default function Dashboard() {
   return (
     <div className="text-center">
       <h2 className="text-2xl font-bold mb-4">My Forms</h2>
-      <p className="text-gray-600">No forms created yet. Form creation will be available in the next update!</p>
+      <p className="text-gray-600">No forms created yet.</p>
     </div>
   );
 }
