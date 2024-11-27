@@ -4,6 +4,7 @@ import Navbar from './components/Navbar';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
+import FormBuilder from './pages/FormBuilder';
 
 function App() {
   return (
@@ -15,6 +16,8 @@ function App() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/forms/new" element={<FormBuilder />} />
+            <Route path="/forms/:id/edit" element={<FormBuilder />} />
           </Routes>
         </main>
       </div>
