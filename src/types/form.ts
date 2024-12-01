@@ -1,7 +1,11 @@
 export type QuestionType = 
   | 'short_text'
   | 'long_text'
-  | 'single_choice';
+  | 'single_choice'
+  | 'multiple_choice'
+  | 'numeric'
+  | 'date'
+  | 'time';
 
 export interface Question {
   id: string;
@@ -9,4 +13,11 @@ export interface Question {
   title: string;
   required: boolean;
   options?: string[];
+  maxChoices?: number;
+  numericRange?: {
+    min: number;
+    max: number;
+    step: number;
+  };
+  imageUrl?: string;
 }

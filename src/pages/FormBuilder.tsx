@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, Save } from 'lucide-react';
-import { Question, QuestionType } from '../types/form';
+import QuestionEditor from '../components/QuestionEditor';
+import { Question } from '../types/form';
 
 export default function FormBuilder() {
   const [title, setTitle] = useState('Untitled Form');
@@ -27,9 +28,29 @@ export default function FormBuilder() {
     setQuestions(questions.filter(q => q.id !== questionId));
   };
 
+  const cloneQuestion = (questionId: string) => {
+    const question = questions.find(q => q.id === questionId);
+    if (question) {
+      const clone = {
+        ...question,
+        id: `q-${Date.now()}`,
+        title: `${question.title} (Copy)`
+      };
+      setQuestions([...questions, clone]);
+    }
+  };
+
   const handleSave = () => {
-    // Intentionally buggy save function - will be fixed in later stages
+    // Still intentionally buggy - will be fixed in later stages
     console.log('Saving form...');
+    if (!title.trim()) {
+      alert('Form title is required');
+      return;
+    }
+    if (questions.length === 0) {
+      alert('Form must have at least one question');
+      return;
+    }
     setTimeout(() => {
       console.error('Failed to save form');
     }, 1000);
@@ -65,41 +86,13 @@ export default function FormBuilder() {
 
       <div className="space-y-4">
         {questions.map((question) => (
-          <div key={question.id} className="bg-white p-6 rounded-lg shadow-md">
-            <div className="flex justify-between mb-4">
-              <select
-                value={question.type}
-                onChange={(e) => updateQuestion(question.id, { type: e.target.value as QuestionType })}
-                className="rounded-md border-gray-300"
-              >
-                <option value="short_text">Short Text</option>
-                <option value="long_text">Long Text</option>
-                <option value="single_choice">Single Choice</option>
-              </select>
-              <button
-                onClick={() => deleteQuestion(question.id)}
-                className="text-red-600 hover:text-red-700"
-              >
-                Delete
-              </button>
-            </div>
-            <input
-              type="text"
-              value={question.title}
-              onChange={(e) => updateQuestion(question.id, { title: e.target.value })}
-              placeholder="Question text"
-              className="w-full mb-4 rounded-md border-gray-300"
-            />
-            <label className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                checked={question.required}
-                onChange={(e) => updateQuestion(question.id, { required: e.target.checked })}
-                className="rounded border-gray-300 text-indigo-600"
-              />
-              <span className="text-sm text-gray-700">Required</span>
-            </label>
-          </div>
+          <QuestionEditor
+            key={question.id}
+            question={question}
+            onUpdate={(updates) => updateQuestion(question.id, updates)}
+            onDelete={() => deleteQuestion(question.id)}
+            onClone={() => cloneQuestion(question.id)}
+          />
         ))}
       </div>
 
