@@ -7,6 +7,12 @@ export type QuestionType =
   | 'date'
   | 'time';
 
+export interface NumericRange {
+  min: number;
+  max: number;
+  step: number;
+}
+
 export interface Question {
   id: string;
   type: QuestionType;
@@ -14,10 +20,16 @@ export interface Question {
   required: boolean;
   options?: string[];
   maxChoices?: number;
-  numericRange?: {
-    min: number;
-    max: number;
-    step: number;
-  };
+  numericRange?: NumericRange;
   imageUrl?: string;
+}
+
+export interface Form {
+  id: string;
+  title: string;
+  description: string;
+  questions: Question[];
+  allowAnonymous?: boolean;
+  createdAt: string;
+  updatedAt: string;
 }

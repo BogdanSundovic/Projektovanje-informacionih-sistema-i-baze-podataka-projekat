@@ -1,15 +1,23 @@
 import React from 'react';
-import { Question, QuestionType } from '../types/form';
+import { Question, QuestionType, NumericRange } from '../types/form';
 import { Trash2, Image, Copy, GripVertical } from 'lucide-react';
+import NumericRangeComponent from './NumericRange';
 
 interface QuestionEditorProps {
   question: Question;
   onUpdate: (updates: Partial<Question>) => void;
   onDelete: () => void;
   onClone: () => void;
+  dragHandleProps?: Record<string, any>;
 }
 
-export default function QuestionEditor({ question, onUpdate, onDelete, onClone }: QuestionEditorProps) {
+export default function QuestionEditor({
+  question,
+  onUpdate,
+  onDelete,
+  onClone,
+  dragHandleProps,
+}: QuestionEditorProps) {
   const questionTypes: { value: QuestionType; label: string }[] = [
     { value: 'short_text', label: 'Short Text (512 chars)' },
     { value: 'long_text', label: 'Long Text (4096 chars)' },
@@ -24,7 +32,9 @@ export default function QuestionEditor({ question, onUpdate, onDelete, onClone }
     <div className="bg-white p-6 rounded-lg shadow-md">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center space-x-2">
-          <GripVertical className="h-5 w-5 text-gray-400 cursor-move" />
+          <div {...dragHandleProps}>
+            <GripVertical className="h-5 w-5 text-gray-400 cursor-move" />
+          </div>
           <select
             value={question.type}
             onChange={(e) => onUpdate({ type: e.target.value as QuestionType })}
@@ -122,56 +132,10 @@ export default function QuestionEditor({ question, onUpdate, onDelete, onClone }
       )}
 
       {question.type === 'numeric' && (
-        <div className="grid grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Min</label>
-            <input
-              type="number"
-              value={question.numericRange?.min || 0}
-              onChange={(e) =>
-                onUpdate({
-                  numericRange: {
-                    ...question.numericRange,
-                    min: parseInt(e.target.value),
-                  },
-                })
-              }
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Max</label>
-            <input
-              type="number"
-              value={question.numericRange?.max || 100}
-              onChange={(e) =>
-                onUpdate({
-                  numericRange: {
-                    ...question.numericRange,
-                    max: parseInt(e.target.value),
-                  },
-                })
-              }
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Step</label>
-            <input
-              type="number"
-              value={question.numericRange?.step || 1}
-              onChange={(e) =>
-                onUpdate({
-                  numericRange: {
-                    ...question.numericRange,
-                    step: parseInt(e.target.value),
-                  },
-                })
-              }
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-            />
-          </div>
-        </div>
+        <NumericRangeComponent
+          value={question.numericRange}
+          onChange={(range: NumericRange) => onUpdate({ numericRange: range })}
+        />
       )}
 
       <div className="mt-4 flex items-center justify-between">

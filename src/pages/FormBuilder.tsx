@@ -1,59 +1,103 @@
-import React, { useState } from 'react';
+import React, { useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Plus, Save } from 'lucide-react';
-import QuestionEditor from '../components/QuestionEditor';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import DraggableQuestion from '../components/DraggableQuestion';
+import { useFormStore } from '../stores/formStore';
 import { Question } from '../types/form';
 
 export default function FormBuilder() {
-  const [title, setTitle] = useState('Untitled Form');
-  const [description, setDescription] = useState('');
-  const [questions, setQuestions] = useState<Question[]>([]);
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const {
+    currentForm,
+    setCurrentForm,
+    createForm,
+    updateForm,
+    addQuestion,
+    removeQuestion,
+    updateQuestion,
+    reorderQuestions,
+  } = useFormStore();
 
-  const addQuestion = () => {
+  useEffect(() => {
+    if (id === 'new') {
+      const newForm = {
+        id: `form-${Date.now()}`,
+        title: 'Untitled Form',
+        description: '',
+        questions: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      createForm(newForm);
+      setCurrentForm(newForm);
+      navigate(`/forms/${newForm.id}/edit`, { replace: true });
+    } else if (id && !currentForm) {
+      // In a real app, we would fetch the form data here
+      navigate('/forms/new');
+    }
+  }, [id, currentForm, createForm, navigate, setCurrentForm]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  if (!currentForm) {
+    return null;
+  }
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = currentForm.questions.findIndex((q) => q.id === active.id);
+      const newIndex = currentForm.questions.findIndex((q) => q.id === over.id);
+      reorderQuestions(currentForm.id, oldIndex, newIndex);
+    }
+  };
+
+  const handleAddQuestion = () => {
     const newQuestion: Question = {
       id: `q-${Date.now()}`,
       type: 'short_text',
       title: 'New Question',
-      required: false
+      required: false,
     };
-    setQuestions([...questions, newQuestion]);
-  };
-
-  const updateQuestion = (questionId: string, updates: Partial<Question>) => {
-    setQuestions(questions.map(q => 
-      q.id === questionId ? { ...q, ...updates } : q
-    ));
-  };
-
-  const deleteQuestion = (questionId: string) => {
-    setQuestions(questions.filter(q => q.id !== questionId));
-  };
-
-  const cloneQuestion = (questionId: string) => {
-    const question = questions.find(q => q.id === questionId);
-    if (question) {
-      const clone = {
-        ...question,
-        id: `q-${Date.now()}`,
-        title: `${question.title} (Copy)`
-      };
-      setQuestions([...questions, clone]);
-    }
+    addQuestion(currentForm.id, newQuestion);
   };
 
   const handleSave = () => {
-    // Still intentionally buggy - will be fixed in later stages
-    console.log('Saving form...');
-    if (!title.trim()) {
+    if (!currentForm.title.trim()) {
       alert('Form title is required');
       return;
     }
-    if (questions.length === 0) {
+    if (currentForm.questions.length === 0) {
       alert('Form must have at least one question');
       return;
     }
-    setTimeout(() => {
-      console.error('Failed to save form');
-    }, 1000);
+    updateForm(currentForm.id, {
+      updatedAt: new Date().toISOString(),
+    });
+    // In a real app, we would save to a backend here
+    alert('Form saved successfully!');
   };
 
   return (
@@ -62,8 +106,10 @@ export default function FormBuilder() {
         <div className="flex justify-between items-center mb-4">
           <input
             type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            value={currentForm.title}
+            onChange={(e) =>
+              updateForm(currentForm.id, { title: e.target.value })
+            }
             className="text-2xl font-bold w-full border-none focus:ring-0"
             placeholder="Form Title"
           />
@@ -76,28 +122,50 @@ export default function FormBuilder() {
           </button>
         </div>
         <textarea
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
+          value={currentForm.description}
+          onChange={(e) =>
+            updateForm(currentForm.id, { description: e.target.value })
+          }
           placeholder="Form Description"
           className="w-full border-none focus:ring-0 resize-none"
           rows={3}
         />
       </div>
 
-      <div className="space-y-4">
-        {questions.map((question) => (
-          <QuestionEditor
-            key={question.id}
-            question={question}
-            onUpdate={(updates) => updateQuestion(question.id, updates)}
-            onDelete={() => deleteQuestion(question.id)}
-            onClone={() => cloneQuestion(question.id)}
-          />
-        ))}
-      </div>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext
+          items={currentForm.questions.map((q) => q.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          <div className="space-y-4">
+            {currentForm.questions.map((question) => (
+              <DraggableQuestion
+                key={question.id}
+                question={question}
+                onUpdate={(updates) =>
+                  updateQuestion(currentForm.id, question.id, updates)
+                }
+                onDelete={() => removeQuestion(currentForm.id, question.id)}
+                onClone={() => {
+                  const clone = {
+                    ...question,
+                    id: `q-${Date.now()}`,
+                    title: `${question.title} (Copy)`,
+                  };
+                  addQuestion(currentForm.id, clone);
+                }}
+              />
+            ))}
+          </div>
+        </SortableContext>
+      </DndContext>
 
       <button
-        onClick={addQuestion}
+        onClick={handleAddQuestion}
         className="mt-4 flex items-center space-x-2 text-indigo-600 hover:text-indigo-700"
       >
         <Plus className="h-5 w-5" />
