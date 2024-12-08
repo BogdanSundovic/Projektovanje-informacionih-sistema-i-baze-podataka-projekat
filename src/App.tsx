@@ -5,6 +5,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import FormBuilder from './pages/FormBuilder';
+import FormResponse from './pages/FormResponse';
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
             <Route path="/register" element={<Register />} />
             <Route path="/forms/new" element={<FormBuilder />} />
             <Route path="/forms/:id/edit" element={<FormBuilder />} />
+            <Route path="/forms/:id/respond" element={<FormResponse />} />
           </Routes>
         </main>
       </div>

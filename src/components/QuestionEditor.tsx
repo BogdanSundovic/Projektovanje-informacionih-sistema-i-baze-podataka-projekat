@@ -1,7 +1,9 @@
 import React from 'react';
-import { Question, QuestionType, NumericRange } from '../types/form';
-import { Trash2, Image, Copy, GripVertical } from 'lucide-react';
-import NumericRangeComponent from './NumericRange';
+import { Question, QuestionType } from '../types/form';
+import { Trash2, Copy, GripVertical } from 'lucide-react';
+import NumericRange from './NumericRange';
+import QuestionOptions from './QuestionOptions';
+import ImageUpload from './ImageUpload';
 
 interface QuestionEditorProps {
   question: Question;
@@ -74,67 +76,13 @@ export default function QuestionEditor({
       />
 
       {(question.type === 'single_choice' || question.type === 'multiple_choice') && (
-        <div className="space-y-2">
-          {question.options?.map((option, index) => (
-            <div key={index} className="flex items-center space-x-2">
-              <input
-                type={question.type === 'single_choice' ? 'radio' : 'checkbox'}
-                disabled
-                className="border-gray-300 text-indigo-600 focus:ring-indigo-500"
-              />
-              <input
-                type="text"
-                value={option}
-                onChange={(e) => {
-                  const newOptions = [...(question.options || [])];
-                  newOptions[index] = e.target.value;
-                  onUpdate({ options: newOptions });
-                }}
-                className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                placeholder={`Option ${index + 1}`}
-              />
-              <button
-                onClick={() => {
-                  const newOptions = question.options?.filter((_, i) => i !== index);
-                  onUpdate({ options: newOptions });
-                }}
-                className="text-red-600 hover:text-red-700"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </div>
-          ))}
-          <button
-            onClick={() => {
-              const newOptions = [...(question.options || []), ''];
-              onUpdate({ options: newOptions });
-            }}
-            className="text-indigo-600 hover:text-indigo-700 text-sm font-medium"
-          >
-            Add Option
-          </button>
-          {question.type === 'multiple_choice' && (
-            <div className="mt-2">
-              <label className="block text-sm font-medium text-gray-700">
-                Required number of answers:
-              </label>
-              <input
-                type="number"
-                min="1"
-                max={question.options?.length || 1}
-                value={question.maxChoices || 1}
-                onChange={(e) => onUpdate({ maxChoices: parseInt(e.target.value) })}
-                className="mt-1 block w-24 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-              />
-            </div>
-          )}
-        </div>
+        <QuestionOptions question={question} onUpdate={onUpdate} />
       )}
 
       {question.type === 'numeric' && (
-        <NumericRangeComponent
-          value={question.numericRange}
-          onChange={(range: NumericRange) => onUpdate({ numericRange: range })}
+        <NumericRange
+          value={question.numericRange || { min: 0, max: 100, step: 1 }}
+          onChange={(range) => onUpdate({ numericRange: range })}
         />
       )}
 
@@ -149,35 +97,11 @@ export default function QuestionEditor({
           <span className="text-sm text-gray-700">Required</span>
         </label>
 
-        <button
-          onClick={() => {
-            const imageUrl = prompt('Enter image URL:');
-            if (imageUrl) {
-              onUpdate({ imageUrl });
-            }
-          }}
-          className="flex items-center space-x-1 text-gray-600 hover:text-gray-900"
-        >
-          <Image className="h-4 w-4" />
-          <span className="text-sm">Add Image</span>
-        </button>
+        <ImageUpload
+          imageUrl={question.imageUrl}
+          onUpdate={(imageUrl) => onUpdate({ imageUrl })}
+        />
       </div>
-
-      {question.imageUrl && (
-        <div className="mt-4">
-          <img
-            src={question.imageUrl}
-            alt="Question illustration"
-            className="max-w-full h-auto rounded-md"
-          />
-          <button
-            onClick={() => onUpdate({ imageUrl: undefined })}
-            className="mt-2 text-red-600 hover:text-red-700 text-sm"
-          >
-            Remove Image
-          </button>
-        </div>
-      )}
     </div>
   );
 }
