@@ -18,18 +18,26 @@ export default function Navbar() {
         <div className="flex justify-between items-center h-16">
           <Link to="/" className="flex items-center space-x-2">
             <FormInput className="h-8 w-8 text-indigo-600" />
-            <span className="text-xl font-bold text-gray-900">MissMatch</span>
+            <span className="text-xl font-bold text-gray-900">FormCraft</span>
           </Link>
 
           <div className="flex items-center space-x-4">
             {isAuthenticated ? (
-              <button
-                onClick={handleLogout}
-                className="flex items-center space-x-2 text-gray-600 hover:text-gray-900"
-              >
-                <LogOut className="h-5 w-5" />
-                <span>Logout</span>
-              </button>
+              <>
+                <Link
+                  to="/forms/new"
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
+                >
+                  Create Form
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center space-x-2 text-gray-600 hover:text-gray-900"
+                >
+                  <LogOut className="h-5 w-5" />
+                  <span>Logout</span>
+                </button>
+              </>
             ) : (
               <Link
                 to="/login"

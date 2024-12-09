@@ -1,8 +1,9 @@
 import { create } from 'zustand';
+import { mockUsers, User } from './mockData';
 
 interface AuthState {
   isAuthenticated: boolean;
-  user: any | null;
+  user: User | null;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
 }
@@ -11,9 +12,11 @@ export const useAuthStore = create<AuthState>((set) => ({
   isAuthenticated: false,
   user: null,
   login: async (email: string, password: string) => {
-    // Stage 1: Simple mock login
-    if (email && password) {
-      set({ isAuthenticated: true, user: { email } });
+    const user = mockUsers.find(
+      (u) => u.email === email && u.password === password
+    );
+    if (user) {
+      set({ isAuthenticated: true, user });
       return true;
     }
     return false;

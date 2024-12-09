@@ -7,21 +7,19 @@ export type QuestionType =
   | 'date'
   | 'time';
 
-export interface NumericRange {
-  min: number;
-  max: number;
-  step: number;
-}
-
 export interface Question {
   id: string;
   type: QuestionType;
   title: string;
   required: boolean;
   options?: string[];
-  maxChoices?: number;
-  numericRange?: NumericRange;
   imageUrl?: string;
+  numericRange?: {
+    min: number;
+    max: number;
+    step: number;
+  };
+  maxChoices?: number;
 }
 
 export interface Form {
@@ -29,7 +27,7 @@ export interface Form {
   title: string;
   description: string;
   questions: Question[];
-  allowAnonymous?: boolean;
+  allowAnonymous: boolean;
   createdAt: string;
   updatedAt: string;
 }
