@@ -11,12 +11,16 @@ import jwt
 from form import FormModel, FormCreate
 from database import Base, engine, SessionLocal
 from jose import JWTError
-
+from models import UserModel
+from typing import List, Optional
+from schemas import *
+from fastapi.staticfiles import StaticFiles
+import os
 
 # Config
 SECRET_KEY = "rumadotokija"
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 2880
 DATABASE_URL = "postgresql://postgres:admin123@localhost/baze2_db" 
 # DB Setup
 Base = declarative_base()
@@ -43,31 +47,12 @@ def verify_password(plain_password, hashed_password):
 def get_password_hash(password):
     return pwd_context.hash(password)
 
-# SQLAlchemy Models
-class UserModel(Base):
-    __tablename__ = "users"
-    id = Column(Integer, primary_key=True, index=True)
-    username = Column(String, unique=True, index=True)
-    email = Column(String, unique=True, index=True)
-    hashed_password = Column(String)
 
 Base.metadata.create_all(bind=engine)
 
-# Pydantic Schemas
-class User(BaseModel):
-    username: str
-    email: str
-
-class UserInDB(User):
-    hashed_password: str
-
-class UserCreate(BaseModel):
-    username: str
-    email: str
-    password: str
-
 # Auth
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token", auto_error=False)
+
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode = data.copy()
@@ -143,11 +128,6 @@ def read_users_me(current_user: UserModel = Depends(get_current_user)):
     }
 
 
-
-class LoginRequest(BaseModel):
-    identifier: str
-    password: str
-
 @app.post("/api/login")
 def login(data: LoginRequest, db: Session = Depends(get_db)):
     if "@" in data.identifier:
@@ -162,9 +142,17 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
     return {"access_token": access_token, "token_type": "bearer"}
 
 
+@app.get("/api/me")
+def read_me(current_user: UserModel = Depends(get_current_user)):
+    return {
+        "username": current_user.username,
+        "email": current_user.email
+    }
 
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+from form import router as form_router
+app.include_router(form_router)
+
 
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     credentials_exception = HTTPException(status_code=401, detail="Invalid token")
@@ -181,25 +169,8 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
         raise credentials_exception
     return user
 
-@app.get("/api/me")
-def read_me(current_user: UserModel = Depends(get_current_user)):
-    return {
-        "username": current_user.username,
-        "email": current_user.email
-    }
 
 
-router = APIRouter()
-
-@router.post("/api/forms")
-def create_form(data: FormCreate, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
-    new_form = FormModel(
-        name=data.name,
-        description=data.description,
-        owner_id=current_user.id
-    )
-    db.add(new_form)
-    db.commit()
-    db.refresh(new_form)
-    return {"id": new_form.id, "message": "Form created successfully"}
-
+@app.get("/api/users")
+def get_users(db: Session = Depends(get_db)):
+    return db.query(UserModel).all()
