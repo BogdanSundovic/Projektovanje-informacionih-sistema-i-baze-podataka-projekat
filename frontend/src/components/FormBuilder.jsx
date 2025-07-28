@@ -1,5 +1,5 @@
 // src/components/FormBuilder.jsx
-
+import { FiPlusCircle } from 'react-icons/fi';
 import React from 'react';
 import QuestionField from './QuestionField';
 
@@ -7,7 +7,7 @@ function FormBuilder({ questions, setQuestions }) {
   const addQuestion = () => {
     setQuestions([
       ...questions,
-      { text: '', type: 'text', is_required: false, options: [] },
+      { text: '', type: 'short_text', is_required: false, options: [] },
     ]);
   };
 
@@ -25,18 +25,23 @@ function FormBuilder({ questions, setQuestions }) {
 
   return (
     <div>
-      <h3>Pitanja</h3>
+      <h3 className="forms-title">Pitanja</h3>
+      <div className="form-question-list"></div>
       {questions.map((q, i) => (
+        <div key={i} className="form-question">
         <QuestionField
-          key={i}
           index={i}
           question={q}
           updateQuestion={updateQuestion}
           removeQuestion={removeQuestion}
         />
+        </div>
       ))}
-
-      <button onClick={addQuestion}>+ Dodaj pitanje</button>
+      <div>
+      <button className="form-button" onClick={addQuestion}>
+        <FiPlusCircle style={{ marginRight: '8px' }} />
+        + Dodaj pitanje</button>
+      </div>
     </div>
   );
 }
