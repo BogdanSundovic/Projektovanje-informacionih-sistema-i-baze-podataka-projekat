@@ -6,14 +6,14 @@ from sqlalchemy import Column, Integer, String, create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from passlib.context import CryptContext
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import jwt
-from form import FormModel, FormCreate
-from database import Base, engine, SessionLocal
+from backend.form import FormModel, FormCreate
+from backend.database import Base, engine, SessionLocal
 from jose import JWTError
-from models import UserModel
+from backend.models import UserModel
 from typing import List, Optional
-from schemas import *
+from backend.schemas import *
 from fastapi.staticfiles import StaticFiles
 import os
 
@@ -23,9 +23,9 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 2880
 DATABASE_URL = "postgresql://postgres:admin123@localhost/baze2_db" 
 # DB Setup
-Base = declarative_base()
-engine = create_engine(DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+#Base = declarative_base()
+#engine = create_engine(DATABASE_URL)
+#SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # App Init
 app = FastAPI()
@@ -56,7 +56,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token", auto_error=False)
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode = data.copy()
-    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=15))
+    expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=15))
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
@@ -150,7 +150,7 @@ def read_me(current_user: UserModel = Depends(get_current_user)):
     }
 
 
-from form import router as form_router
+from backend.form import router as form_router
 app.include_router(form_router)
 
 

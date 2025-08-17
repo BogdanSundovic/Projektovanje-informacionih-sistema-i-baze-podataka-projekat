@@ -2,8 +2,8 @@ from fastapi.security import OAuth2PasswordBearer
 from fastapi import Depends, HTTPException, status, Request
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
-from database import SessionLocal
-from models import UserModel 
+from backend.database import SessionLocal
+from backend.models import UserModel 
 from typing import Optional
 
 SECRET_KEY = "rumadotokija"

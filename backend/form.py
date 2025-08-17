@@ -1,22 +1,22 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, func, Boolean, text
 from sqlalchemy.orm import relationship, Session, joinedload
-from database import Base
+from backend.database import Base
 from pydantic import BaseModel
 from fastapi import FastAPI, HTTPException, Depends, APIRouter, UploadFile, File, Form, Request
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 from fastapi.datastructures import UploadFile
-from form_db_circl_fix import get_db
-from form_cur_user_circl_fix import get_current_user_optional as get_current_user
-from schemas import QuestionCreate, QuestionCreateMultipart, OptionWithImage
-from models import QuestionModel, OptionModel, UserModel,AnswerModel
-from schemas import FormOut, FormCreate, AnswerSubmission, FormUpdate, QuestionUpdate 
+from backend.form_db_circl_fix import get_db
+from backend.form_cur_user_circl_fix import get_current_user_optional as get_current_user
+from backend.schemas import QuestionCreate, QuestionCreateMultipart, OptionWithImage
+from backend.models import QuestionModel, OptionModel, UserModel,AnswerModel
+from backend.schemas import FormOut, FormCreate, AnswerSubmission, FormUpdate, QuestionUpdate 
 from typing import Optional, List
-from form_cur_user_circl_fix import get_current_user_optional
+from backend.form_cur_user_circl_fix import get_current_user_optional
 import json, os, uuid, shutil
 from uuid import uuid4
 import mimetypes
-from cloudinary_utils import upload_to_cloudinary
+from backend.cloudinary_utils import upload_to_cloudinary
 
 router = APIRouter()
 
