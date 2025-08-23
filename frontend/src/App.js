@@ -1,4 +1,5 @@
-import React from 'react';
+// src/App.js
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import MyFormsPage from "./pages/MyFormsPage";
 import CreateFormPage from './pages/CreateFormPage';
@@ -12,11 +13,24 @@ import ViewResultsPage from './pages/ViewResultsPage';
 import EditFormPage from './pages/EditFormPage';
 import Navbar from './components/Navbar';
 
+import './styles/variables.css';
+import './styles/layout.css';
+import './styles/form.css';
 
 function App() {
+  useEffect(() => {
+    const saved = localStorage.getItem('theme'); // 'light' | 'dark' | null
+    const root = document.documentElement;
+    if (saved) {
+      root.setAttribute('data-theme', saved);
+    } else {
+      root.removeAttribute('data-theme'); // koristi OS preferencu
+    }
+  }, []);
+
   return (
     <Router>
-       <Navbar /> {}
+      <Navbar />
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
@@ -25,7 +39,7 @@ function App() {
         <Route path="/my-forms" element={<PrivateRoute><MyFormsPage /></PrivateRoute>} />
         <Route path="/form/view/:id" element={<FillFormPage />} />
         <Route path="/form/results/:id" element={<PrivateRoute><ViewResultsPage /></PrivateRoute>} />
-        <Route path="/form/edit/:id" element={<PrivateRoute><EditFormPage /></PrivateRoute>}/>
+        <Route path="/form/edit/:id" element={<PrivateRoute><EditFormPage /></PrivateRoute>} />
         <Route path="/" element={<PublicFormsPage />} />
         <Route path="*" element={<LoginPage />} /> {/* Baca na login */}
       </Routes>

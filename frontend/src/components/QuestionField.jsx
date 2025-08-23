@@ -1,42 +1,96 @@
-// src/components/QuestionField.jsx
-
 import React, { useState, useEffect } from 'react';
 import { FiTrash2 } from 'react-icons/fi';
 
+const DEFAULT_QUESTION = {
+  text: '',
+  type: 'short_text', // short_text | long_text | single_choice | multiple_choice
+  is_required: false,
+  options: [],
+  image: null,          // File
+  image_url: null,      // postojeći URL sa BE
+  image_preview: null,  // objectURL kad user izabere novu sliku
+  max_choices: '',
+};
+
+const isChoiceType = (t) => t === 'single_choice' || t === 'multiple_choice';
+
+// stabilan key za opcije
+const ensureLocalId = (o) => ({
+  localId: o?.localId || o?.id || crypto.randomUUID(),
+  text: o?.text ?? '',
+  image: o?.image ?? null,                  // File
+  image_url: o?.image_url ?? null,          // postojeći URL
+  image_preview: o?.image_preview ?? null,  // objectURL za novu
+});
+
 function QuestionField({ index, question, updateQuestion, removeQuestion }) {
-  const [localQ, setLocalQ] = useState(question);
+  const [localQ, setLocalQ] = useState(() => ({
+    ...DEFAULT_QUESTION,
+    ...(question || {}),
+    options: (question?.options || []).map(ensureLocalId),
+  }));
 
   useEffect(() => {
-    if (['radio', 'checkbox'].includes(localQ.type) && Array.isArray(localQ.options)) {
-      const normalizedOptions = localQ.options.map((opt) =>
-        typeof opt === 'string' ? { text: opt, image: null } : opt
-      );
-      setLocalQ((prev) => ({ ...prev, options: normalizedOptions }));
-    }
-  }, [localQ.type]);
+    setLocalQ({
+      ...DEFAULT_QUESTION,
+      ...(question || {}),
+      options: (question?.options || []).map(ensureLocalId),
+    });
+  }, [question]);
 
-  const handleChange = (field, value) => {
-    const updated = { ...localQ, [field]: value };
-    setLocalQ(updated);
-    updateQuestion(index, updated);
+  const setAndPropagate = (next) => {
+    setLocalQ(next);
+    updateQuestion(index, next);
   };
 
-  const handleOptionChange = (i, key, value) => {
-    const updatedOptions = [...(localQ.options || [])];
-    if (!updatedOptions[i]) updatedOptions[i] = { text: '', image: null };
-    updatedOptions[i][key] = value;
-    handleChange('options', updatedOptions);
+  const handleChange = (field, value) => {
+    setAndPropagate({ ...localQ, [field]: value });
+  };
+
+  const handleTypeChange = (newType) => {
+    if (isChoiceType(newType)) {
+      const mc = newType === 'multiple_choice' ? (localQ.max_choices ?? '') : '';
+      const opts = (localQ.options || []).map(ensureLocalId);
+      setAndPropagate({ ...localQ, type: newType, options: opts, max_choices: mc });
+    } else {
+      setAndPropagate({ ...localQ, type: newType, options: [], max_choices: '' });
+    }
+  };
+
+  // QUESTION image
+  const handleQuestionImage = (file) => {
+    const preview = file ? URL.createObjectURL(file) : null;
+    setAndPropagate({ ...localQ, image: file, image_preview: preview });
+  };
+
+  // OPTION handlers
+  const handleOptionTextChange = (localId, value) => {
+    const opts = (localQ.options || []).map((o) =>
+      o.localId === localId ? { ...o, text: value } : o
+    );
+    setAndPropagate({ ...localQ, options: opts });
+  };
+
+  const handleOptionImageChange = (localId, file) => {
+    const preview = file ? URL.createObjectURL(file) : null;
+    const opts = (localQ.options || []).map((o) =>
+      o.localId === localId ? { ...o, image: file, image_preview: preview } : o
+    );
+    setAndPropagate({ ...localQ, options: opts });
   };
 
   const addOption = () => {
-    handleChange('options', [...(localQ.options || []), { text: '', image: null }]);
+    const nextOpt = ensureLocalId({ text: '', image: null, image_url: null });
+    setAndPropagate({ ...localQ, options: [...(localQ.options || []), nextOpt] });
   };
 
-  const removeOption = (i) => {
-    const updatedOptions = [...(localQ.options || [])];
-    updatedOptions.splice(i, 1);
-    handleChange('options', updatedOptions);
+  const removeOption = (localId) => {
+    const opts = (localQ.options || []).filter((o) => o.localId !== localId);
+    setAndPropagate({ ...localQ, options: opts });
   };
+
+  // bira šta da prikaže kao sliku
+  const qImageSrc = localQ.image_preview || localQ.image_url || null;
 
   return (
     <div className="question-block">
@@ -48,72 +102,130 @@ function QuestionField({ index, question, updateQuestion, removeQuestion }) {
         className="input-field"
       />
 
+      {/* slika pitanja */}
       <input
         type="file"
         accept="image/*"
-        className="input-field"
-        onChange={(e) => handleChange('image', e.target.files[0])}
+        className="file-field"
+        onChange={(e) => handleQuestionImage(e.target.files[0])}
       />
+      {qImageSrc && (
+        <img
+          src={qImageSrc}
+          alt="Slika pitanja"
+          className="question-thumb"
+        />
+      )}
 
       <select
         className="input-field"
         value={localQ.type}
-        onChange={(e) => handleChange('type', e.target.value)}
+        onChange={(e) => handleTypeChange(e.target.value)}
       >
         <option value="short_text">Kratak tekst (do 512 karaktera)</option>
         <option value="long_text">Dug tekst (do 4096 karaktera)</option>
-        <option value="radio">Jedan izbor</option>
-        <option value="checkbox">Više izbora</option>
+        <option value="single_choice">Jedan izbor</option>
+        <option value="multiple_choice">Više izbora</option>
       </select>
 
-      <label>
-        <input
-          type="checkbox"
-          checked={localQ.is_required}
-          onChange={(e) => handleChange('is_required', e.target.checked)}
-        />
-        Obavezno
-      </label>
+      <div className="form-row inline" style={{ alignItems: 'center' }}>
+        <label className="muted" htmlFor={`req-${index}`}>Obavezno</label>
+        <label className="switch">
+          <input
+            id={`req-${index}`}
+            type="checkbox"
+            checked={!!localQ.is_required}
+            onChange={(e) => handleChange('is_required', e.target.checked)}
+          />
+          <span className="slider" />
+        </label>
+      </div>
 
-      {['radio', 'checkbox'].includes(localQ.type) && (
+      {isChoiceType(localQ.type) && (
         <>
-          {(localQ.options || []).map((opt, i) => (
-            <div key={i} style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '8px' }}>
-              <input
-                type="text"
-                value={opt.text}
-                placeholder={`Opcija ${i + 1}`}
-                onChange={(e) => handleOptionChange(i, 'text', e.target.value)}
-              />
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => handleOptionChange(i, 'image', e.target.files[0])}
-              />
-              <button type="button" onClick={() => removeOption(i)}>X</button>
-            </div>
-          ))}
-          <button type="button" className="form-button" onClick={addOption}>
-            Dodaj opciju
-          </button>
+          {(localQ.options || []).map((opt) => {
+            const optImg = opt.image_preview || opt.image_url || null;
+            return (
+              <div key={opt.localId} className="option-row">
+                {/* kolona 1: vizuelni bullet */}
+                <div className="option-bullet" aria-hidden="true">
+                  {localQ.type === 'single_choice' ? (
+                    <input type="radio" disabled />
+                  ) : (
+                    <input type="checkbox" disabled />
+                  )}
+                </div>
+
+                {/* kolona 2: tekst opcije */}
+                <input
+                  type="text"
+                  className="option-text"
+                  placeholder="Opcija"
+                  value={opt.text}
+                  onChange={(e) => handleOptionTextChange(opt.localId, e.target.value)}
+                />
+
+                {/* kolona 3: akcije (thumbnail + upload + ukloni) */}
+                <div className="option-actions">
+                  {optImg && (
+                    <img
+                      src={optImg}
+                      alt="Slika opcije"
+                      className="option-thumb"
+                    />
+                  )}
+
+                  <label className="option-file-btn">
+                    Dodaj sliku
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="option-file"
+                      onChange={(e) => handleOptionImageChange(opt.localId, e.target.files[0])}
+                    />
+                  </label>
+
+                  <button
+                    type="button"
+                    onClick={() => removeOption(opt.localId)}
+                    className="btn-ghost"
+                    title="Ukloni opciju"
+                  >
+                    Ukloni
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+
+          <div className="button-group">
+            <button type="button" className="form-button" onClick={addOption}>
+              Dodaj opciju
+            </button>
+          </div>
         </>
       )}
 
-      {localQ.type === 'checkbox' && (
+      {localQ.type === 'multiple_choice' && (
         <input
           type="number"
           className="input-field"
           placeholder="Broj dozvoljenih odgovora (opcionalno)"
-          value={localQ.max_choices || ''}
+          value={localQ.max_choices}
           min={1}
-          onChange={(e) => handleChange('max_choices', Number(e.target.value))}
+          onChange={(e) => {
+            const v = e.target.value === '' ? '' : Number(e.target.value);
+            handleChange('max_choices', v);
+          }}
         />
       )}
 
-      <button className="form-button" onClick={() => removeQuestion(index)}>
-        <FiTrash2 style={{ marginRight: '6px' }} />
-        Ukloni
-      </button>
+      <div className="button-group" style={{ justifyContent: 'flex-end' }}>
+        <button className="form-button" type="button" onClick={() => removeQuestion(index)}>
+          <FiTrash2 style={{ marginRight: 6, verticalAlign: 'middle' }} />
+          Ukloni pitanje
+        </button>
+      </div>
     </div>
   );
 }
