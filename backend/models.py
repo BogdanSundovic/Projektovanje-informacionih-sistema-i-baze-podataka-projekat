@@ -1,6 +1,7 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Boolean, DateTime, func
+from sqlalchemy import Column, Integer, String, ForeignKey, Boolean, DateTime, func, UniqueConstraint, Index
 from sqlalchemy.orm import relationship
 from database import Base
+
 
 class UserModel(Base):
     __tablename__ = "users"
@@ -8,14 +9,31 @@ class UserModel(Base):
     username = Column(String, unique=True, index=True)
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String)
+    is_superadmin = Column(Boolean, default=False)
+
+class FormModel(Base):
+    __tablename__ = "forms"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    description = Column(String)
+    is_public = Column(Boolean, default=False)
+    is_locked = Column(Boolean, default=False)
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user = relationship("UserModel", backref="forms")
+    questions = relationship("QuestionModel", back_populates="form", cascade="all, delete", passive_deletes=True)
+    collaborators = relationship("CollaboratorModel",back_populates="form", cascade="all, delete-orphan",passive_deletes=True
+)
+    #created_at = Column(DateTime(timezone=True), server_default=func.now())
+    #updated_at = Column(DateTime(timezone=True), onupdate=func.now())    
 
 class QuestionModel(Base):
     __tablename__ = "questions"
 
     id = Column(Integer, primary_key=True, index=True)
-    form_id = Column(Integer, ForeignKey("forms.id"), nullable=False)
+    form_id = Column(Integer, ForeignKey("forms.id", ondelete="CASCADE"), nullable=False)
     text = Column(String, nullable=False)
-    type = Column(String, nullable=False)  #short_text, long_text, radio, checkbox, etc.
+    type = Column(String, nullable=False) 
     is_required = Column(Boolean, default=True)
     order = Column(Integer)
     #created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -29,7 +47,7 @@ class OptionModel(Base):
     __tablename__ = "options"
 
     id = Column(Integer, primary_key=True, index=True)
-    question_id = Column(Integer, ForeignKey("questions.id"), nullable=False)
+    question_id = Column(Integer, ForeignKey("questions.id", ondelete="CASCADE"), nullable=False)
     text = Column(String, nullable=False)
     image_url = Column(String, nullable=True)
     question = relationship("QuestionModel", back_populates="options")
@@ -37,15 +55,20 @@ class OptionModel(Base):
 class CollaboratorModel(Base):
     __tablename__ = "collaborators"
     id = Column(Integer, primary_key=True)
-    form_id = Column(Integer, ForeignKey("forms.id"))
-    user_id = Column(Integer, ForeignKey("users.id"))
-    role = Column(String)    
+    form_id = Column(Integer, ForeignKey("forms.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    role = Column(String, nullable=False)  # 'viewer' ili 'editor'
+    __table_args__ = (
+        UniqueConstraint('form_id', 'user_id', name='uq_collab_form_user'),
+    )  
+    form = relationship("FormModel", back_populates="collaborators", passive_deletes=True)
+    user = relationship("UserModel", passive_deletes=True)
 
 class AnswerModel(Base):
     __tablename__ = "answers"
 
     id = Column(Integer, primary_key=True, index=True)
-    question_id = Column(Integer, ForeignKey("questions.id"), nullable=False)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    question_id = Column(Integer, ForeignKey("questions.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     value = Column(String, nullable=False)
     submitted_at = Column(DateTime(timezone=True), server_default=func.now())
