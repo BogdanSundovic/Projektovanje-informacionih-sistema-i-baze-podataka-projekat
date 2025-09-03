@@ -178,6 +178,55 @@ def _ensure_can_manage_collaborators(db: Session, form: FormModel, user: Optiona
     if not user or user.id != form.owner_id:
         raise HTTPException(status_code=403, detail="Only owner (or superadmin) can manage collaborators.")
     
+def _fmt_num(x: float) -> str:
+    # lepa reprezentacija: 2 umesto 2.0
+    return str(int(x)) if float(x).is_integer() else str(x)
+    
+def _gen_scale(start: float, end: float, step: float) -> list[str]:
+    if step == 0:
+        raise HTTPException(400, "numeric_scale.step must not be 0")
+    values = []
+    v = start
+    
+    if (end - start) * step < 0:
+        raise HTTPException(400, "numeric_scale has inconsistent direction")
+    
+    eps = abs(step) * 1e-9
+    if step > 0:
+        while v <= end + eps:
+            values.append(_fmt_num(v))
+            v += step
+    else:
+        while v >= end - eps:
+            values.append(_fmt_num(v))
+            v += step
+    return values
+
+def _normalize_numeric_choice_options(payload: "QuestionCreate") -> list[dict]:
+    """
+    Vrati listu opcija u formatu [{'text': '...'}, ...] za numeric_choice.
+    Prihvatamo: options (stringovi), numeric_values (brojevi) ili numeric_scale.
+    """
+    if payload.options:
+        
+        out = []
+        for o in payload.options:
+            t = str(o.get("text", ""))
+            try:
+                float(t)
+            except ValueError:
+                raise HTTPException(400, f"numeric_choice option '{t}' is not a number")
+            out.append({"text": t})
+        return out
+
+    if payload.numeric_values:
+        return [{"text": _fmt_num(float(x))} for x in payload.numeric_values]
+
+    if payload.numeric_scale:
+        s = payload.numeric_scale
+        return [{"text": t} for t in _gen_scale(float(s.start), float(s.end), float(s.step))]
+
+    raise HTTPException(400, "numeric_choice requires options OR numeric_values OR numeric_scale")
 
 def _build_analytics_for_form(db: Session, form: FormModel):
     result = []
@@ -384,7 +433,7 @@ def list_user_forms(
     if include_collab:
         collab_ids = db.query(CollaboratorModel.form_id).filter(CollaboratorModel.user_id == user_id)
         collab_forms = db.query(FormModel).filter(FormModel.id.in_(collab_ids)).all()
-        # spoji bez duplikata
+        
         by_id = {f.id: f for f in forms}
         for f in collab_forms:
             by_id.setdefault(f.id, f)
@@ -409,11 +458,12 @@ def add_question(
     is_required: bool = Form(...),
     order: Optional[int] = Form(None),
     max_choices: Optional[int] = Form(None),
-    options: Optional[str] = Form(None),  
-    image: Optional[UploadFile] = File(None),  
+    options: Optional[str] = Form(None),            
+    numeric_scale: Optional[str] = Form(None),      
+    image: Optional[UploadFile] = File(None),
     option_images: List[UploadFile] = File([]),
     as_user: Optional[int] = Query(None),
-    x_impersonate_user: Optional[int] = Header(None, alias="X-Impersonate-User"),  
+    x_impersonate_user: Optional[int] = Header(None, alias="X-Impersonate-User"),
     db: Session = Depends(get_db),
     current_user: UserModel = Depends(get_current_user)
 ):
@@ -421,8 +471,24 @@ def add_question(
     if not form:
         raise HTTPException(status_code=404, detail="Form not found")
 
+   
     actor, _ = resolve_actor_for_impersonation(db, current_user, as_user, x_impersonate_user)
     _ensure_can_edit_form(db, form, current_user, as_user, x_impersonate_user, owner_only=False)
+
+    
+    type_alias = {"radio": "single_choice", "checkbox": "multiple_choice"}
+    qtype = type_alias.get(type, type)
+
+    allowed_types = {
+        "single_choice", "multiple_choice",
+        "numeric_choice", "short_text", "long_text",
+        "date", "datetime"
+    }
+    if qtype not in allowed_types:
+        raise HTTPException(status_code=400, detail=f"Unsupported question type: {qtype}")
+
+    
+    effective_max_choices = max_choices if qtype == "multiple_choice" else None
 
     
     image_url = None
@@ -433,54 +499,104 @@ def add_question(
         os.makedirs("temp", exist_ok=True)
         with open(filepath, "wb") as f:
             f.write(image.file.read())
-
         image_url = upload_to_cloudinary(filepath, filename)
         os.remove(filepath)
 
+    
     new_question = QuestionModel(
         form_id=form_id,
         text=text,
-        type=type,
+        type=qtype,
         is_required=is_required,
         order=order,
-        max_choices=max_choices,
-        image_url=image_url 
+        max_choices=effective_max_choices,
+        image_url=image_url
     )
-
     db.add(new_question)
     db.commit()
     db.refresh(new_question)
 
     
-    if options and type in ["radio", "checkbox", "single_choice", "multiple_choice"]:
-        try:
-            parsed_options = json.loads(options)  # [{"text": "..."}]
-        except:
-            raise HTTPException(status_code=400, detail="Invalid options JSON format")
+    def _gen_numeric_series(start: float, end: float, step: float) -> list[float]:
+        if step == 0:
+            raise HTTPException(status_code=400, detail="numeric_scale.step cannot be 0")
+        vals = []
+        v = float(start)
+        step = float(step)
+        
+        if start <= end and step < 0:
+            step = abs(step)
+        if start > end and step > 0:
+            step = -step
+        
+        for _ in range(10000):
+            if (step > 0 and v > end) or (step < 0 and v < end):
+                break
+            
+            vals.append(float(f"{v:.10g}"))
+            v += step
+        return vals
 
-        for idx, opt in enumerate(parsed_options):
-            opt_image_url = None
-            if idx < len(option_images):
-                img_file = option_images[idx]
-                if img_file and img_file.filename:
-                    ext = os.path.splitext(img_file.filename)[1]
-                    fname = f"{uuid4().hex}{ext}"
-                    fpath = os.path.join("temp", fname)
-                    with open(fpath, "wb") as f:
-                        f.write(img_file.file.read())
+    if qtype in ("single_choice", "multiple_choice", "numeric_choice"):
+        parsed_options = None
 
-                    opt_image_url = upload_to_cloudinary(fpath, fname)
-                    os.remove(fpath)
+        if options:
+            try:
+                parsed_options = json.loads(options)  
+                if not isinstance(parsed_options, list):
+                    raise ValueError
+            except Exception:
+                raise HTTPException(status_code=400, detail="Invalid options JSON format")
 
-            db.add(OptionModel(
-                text=opt["text"],
-                question_id=new_question.id,
-                image_url=opt_image_url
-            ))
+        elif qtype == "numeric_choice" and numeric_scale:
+            
+            try:
+                ns = json.loads(numeric_scale)  
+                start = float(ns["start"]); end = float(ns["end"]); step = float(ns["step"])
+            except Exception:
+                raise HTTPException(status_code=400, detail="Invalid numeric_scale JSON format")
+            series = _gen_numeric_series(start, end, step)
+            parsed_options = [{"text": str(v)} for v in series]
 
-        db.commit()
+        
+        if qtype == "numeric_choice":
+            if not parsed_options:
+                raise HTTPException(status_code=400, detail="numeric_choice requires options or numeric_scale")
+            
+            for opt in parsed_options:
+                try:
+                    _ = float(str(opt.get("text", "")).strip())
+                except Exception:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="numeric_choice options must be numeric"
+                    )
 
-    return {"id": new_question.id, "message": "Question with options added"}
+        
+        if parsed_options:
+            for idx, opt in enumerate(parsed_options):
+                opt_image_url = None
+                
+                if qtype in ("single_choice", "multiple_choice") and idx < len(option_images):
+                    img_file = option_images[idx]
+                    if img_file and img_file.filename:
+                        ext = os.path.splitext(img_file.filename)[1]
+                        fname = f"{uuid4().hex}{ext}"
+                        fpath = os.path.join("temp", fname)
+                        os.makedirs("temp", exist_ok=True)
+                        with open(fpath, "wb") as f:
+                            f.write(img_file.file.read())
+                        opt_image_url = upload_to_cloudinary(fpath, fname)
+                        os.remove(fpath)
+
+                db.add(OptionModel(
+                    text=str(opt["text"]),
+                    question_id=new_question.id,
+                    image_url=opt_image_url
+                ))
+            db.commit()
+
+    return {"id": new_question.id, "message": "Question created"}
 
 
 
@@ -590,28 +706,180 @@ def submit_answers(
     db: Session = Depends(get_db),
     current_user: Optional[UserModel] = Depends(get_current_user_optional)
 ):
-
+    
     form = db.query(FormModel).filter(FormModel.id == form_id).first()
     if not form:
         raise HTTPException(status_code=404, detail="Forma ne postoji.")
-    
     if form.is_locked and not (current_user and getattr(current_user, "is_superadmin", False)):
         raise HTTPException(status_code=403, detail="Forma je zaključana za odgovore.")
-
     if not form.is_public and current_user is None:
         raise HTTPException(status_code=403, detail="Morate biti prijavljeni da biste popunili ovu formu.")
 
+    
+    qrows = (
+        db.query(QuestionModel)
+        .filter(QuestionModel.form_id == form_id)
+        .order_by(QuestionModel.order)
+        .all()
+    )
+    questions_by_id = {q.id: q for q in qrows}
+
+    
+    opts_by_qid: dict[int, list[OptionModel]] = {}
+    if qrows:
+        qids = [q.id for q in qrows]
+        all_opts = db.query(OptionModel).filter(OptionModel.question_id.in_(qids)).all()
+        for o in all_opts:
+            opts_by_qid.setdefault(o.question_id, []).append(o)
+
+    
+    sub_by_qid = {a.question_id: a for a in submission.answers}
+
+    
+    for q in qrows:
+        if q.is_required:
+            a = sub_by_qid.get(q.id)
+            if a is None:
+                raise HTTPException(status_code=400, detail=f"Pitanje '{q.text}' je obavezno.")
+            if a.answer is None or (isinstance(a.answer, str) and a.answer.strip() == ""):
+                
+                if not (q.type in ("multiple_choice", "checkbox") and isinstance(a.answer, list) and len(a.answer) > 0):
+                    raise HTTPException(status_code=400, detail=f"Pitanje '{q.text}' je obavezno.")
+
+    def _norm_type(t: str) -> str:
+        alias = {"radio": "single_choice", "checkbox": "multiple_choice"}
+        return alias.get(t, t)
+
+    def _stringy(x) -> str:
+        return "" if x is None else str(x)
+
+    
+    def _parse_id_like(x) -> Optional[int]:
+        try:
+            return int(str(x).strip())
+        except Exception:
+            return None
+
+    def _validate_single(q: QuestionModel, raw) -> str:
+        """Prihvata option id ili option text; vraća string koji snimamo (ID kao string)."""
+        options = opts_by_qid.get(q.id, [])
+        if not options:
+            raise HTTPException(status_code=400, detail=f"Pitanje '{q.text}' nema opcije.")
+        
+        oid = _parse_id_like(raw)
+        if oid is not None and any(o.id == oid for o in options):
+            return str(oid)
+        
+        sval = str(raw)
+        match = next((o for o in options if o.text == sval), None)
+        if match:
+            return str(match.id)
+        raise HTTPException(status_code=400, detail=f"Nevažeća opcija za pitanje '{q.text}'.")
+
+    def _validate_multi(q: QuestionModel, raw) -> str:
+        """Prihvata listu ID-jeva ili tekstova; vraća CSV string sa ID-jevima."""
+        options = opts_by_qid.get(q.id, [])
+        if not options:
+            raise HTTPException(status_code=400, detail=f"Pitanje '{q.text}' nema opcije.")
+        
+        if isinstance(raw, str):
+            cand = [p.strip() for p in raw.split(",") if p.strip()]
+        elif isinstance(raw, list):
+            cand = raw
+        else:
+            raise HTTPException(status_code=400, detail=f"Multiple choice za '{q.text}' očekuje listu ili CSV string.")
+
+        ids: list[int] = []
+        for it in cand:
+            oid = _parse_id_like(it)
+            if oid is not None and any(o.id == oid for o in options):
+                ids.append(oid)
+                continue
+        
+            sval = str(it)
+            match = next((o for o in options if o.text == sval), None)
+            if not match:
+                raise HTTPException(status_code=400, detail=f"Nevažeća opcija '{sval}' za '{q.text}'.")
+            ids.append(match.id)
+
+        
+        if q.max_choices is not None and len(ids) > int(q.max_choices):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Dozvoljeno je najviše {q.max_choices} izbora za '{q.text}'."
+            )
+        
+        return ",".join(str(i) for i in ids)
+
+    def _validate_numeric_choice(q: QuestionModel, raw) -> str:
+        """Prihvata ID opcije ili numeričku vrednost koja postoji među opcijama (po tekstu)."""
+        options = opts_by_qid.get(q.id, [])
+        if not options:
+            raise HTTPException(status_code=400, detail=f"Pitanje '{q.text}' nema opcije.")
+        
+        oid = _parse_id_like(raw)
+        if oid is not None and any(o.id == oid for o in options):
+            return str(oid)
+        
+        try:
+            f = float(str(raw).strip())
+        except Exception:
+            raise HTTPException(status_code=400, detail=f"Odgovor za '{q.text}' mora biti broj.")
+        
+        for o in options:
+            try:
+                if float(o.text) == f:
+                    return str(o.id)
+            except Exception:
+                continue
+        raise HTTPException(status_code=400, detail=f"Odgovor nije u dozvoljenom opsegu za '{q.text}'.")
+
+    def _validate_date(raw) -> str:
+        from datetime import date
+        try:
+            return date.fromisoformat(str(raw)).isoformat()
+        except Exception:
+            raise HTTPException(status_code=400, detail="Neispravan datum (očekivan ISO format YYYY-MM-DD).")
+
+    def _validate_datetime(raw) -> str:
+        from datetime import datetime
+        s = str(raw).replace("Z", "+00:00")
+        try:
+            
+            dt = datetime.fromisoformat(s)
+            return dt.replace(microsecond=0).isoformat()
+        except Exception:
+            raise HTTPException(status_code=400, detail="Neispravan datum/vreme (ISO 8601).")
+
+    
     for item in submission.answers:
-        question = db.query(QuestionModel).filter(QuestionModel.id == item.question_id).first()
-        if not question or question.form_id != form_id:
+        q = questions_by_id.get(item.question_id)
+        if not q:
             raise HTTPException(status_code=400, detail=f"Nevažeće pitanje ID: {item.question_id}")
 
-        answer = AnswerModel(
+        qtype = _norm_type(q.type)
+
+        if qtype == "single_choice":
+            stored_val = _validate_single(q, item.answer)
+        elif qtype == "multiple_choice":
+            stored_val = _validate_multi(q, item.answer)
+        elif qtype == "numeric_choice":
+            stored_val = _validate_numeric_choice(q, item.answer)
+        elif qtype in ("short_text", "long_text"):
+            stored_val = _stringy(item.answer)
+        elif qtype == "date":
+            stored_val = _validate_date(item.answer)
+        elif qtype == "datetime":
+            stored_val = _validate_datetime(item.answer)
+        else:
+            
+            stored_val = _stringy(item.answer)
+
+        db.add(AnswerModel(
             question_id=item.question_id,
-            user_id=current_user.id if current_user else None,
-            value=str(item.answer)
-        )
-        db.add(answer)
+            user_id=(current_user.id if current_user else None),
+            value=stored_val,
+        ))
 
     db.commit()
     return {"message": "Odgovori su uspešno sačuvani."}
@@ -697,69 +965,110 @@ def update_form(
 def update_question(
     form_id: int,
     question_id: int,
-    updated_data: QuestionUpdate,
+    updated_data: QuestionUpdate,                 
     db: Session = Depends(get_db),
     current_user: Optional[UserModel] = Depends(get_current_user_optional),
     as_user: Optional[int] = Query(None),
     x_impersonate_user: Optional[int] = Header(None, alias="X-Impersonate-User"),
 ):
-    question = db.query(QuestionModel).filter(
-        QuestionModel.id == question_id,
-        QuestionModel.form_id == form_id
-    ).first()
+    
+    question = (
+        db.query(QuestionModel)
+        .filter(QuestionModel.id == question_id, QuestionModel.form_id == form_id)
+        .first()
+    )
     if not question:
         raise HTTPException(status_code=404, detail="Pitanje nije pronađeno")
-    
+
     form = db.query(FormModel).filter(FormModel.id == form_id).first()
     if not form:
         raise HTTPException(status_code=404, detail="Forma ne postoji.")
 
+    
     _ensure_can_edit_form(db, form, current_user, as_user, x_impersonate_user, owner_only=False)
+
+    
+    alias = {"radio": "single_choice", "checkbox": "multiple_choice"}
+    if updated_data.type is not None:
+        qtype = alias.get(updated_data.type, updated_data.type)
+        allowed = {
+            "single_choice", "multiple_choice",
+            "numeric_choice", "short_text", "long_text",
+            "date", "datetime"
+        }
+        if qtype not in allowed:
+            raise HTTPException(status_code=400, detail=f"Unsupported question type: {qtype}")
+        question.type = qtype
+    else:
+        qtype = alias.get(question.type, question.type)
 
     if updated_data.text is not None:
         question.text = updated_data.text
-    if updated_data.type is not None:
-        question.type = updated_data.type
 
-    if updated_data.options is not None:
+    
+    if qtype == "multiple_choice":
+        if updated_data.max_choices is not None:
+            question.max_choices = updated_data.max_choices
+    else:
+        question.max_choices = None
+
+    
+    def _gen_numeric_series(start: float, end: float, step: float) -> list[float]:
+        if step == 0:
+            raise HTTPException(status_code=400, detail="numeric_scale.step cannot be 0")
+        vals = []
+        v = float(start)
+        step = float(step)
+        if start <= end and step < 0:
+            step = abs(step)
+        if start > end and step > 0:
+            step = -step
+        for _ in range(10000):
+            if (step > 0 and v > end) or (step < 0 and v < end):
+                break
+            vals.append(float(f"{v:.10g}"))
+            v += step
+        return vals
+
+    
+    has_options = updated_data.options is not None
+    has_scale = getattr(updated_data, "numeric_scale", None) is not None
+
+    if has_options or has_scale:
+        
         db.query(OptionModel).filter(OptionModel.question_id == question_id).delete()
-        for option in updated_data.options:
-            db.add(OptionModel(text=option.text, question_id=question_id))
 
-    if updated_data.max_choices is not None:
-        question.max_choices = updated_data.max_choices
+        new_texts: list[str] = []
+        if has_scale:
+            ns = updated_data.numeric_scale
+            series = _gen_numeric_series(float(ns.start), float(ns.end), float(ns.step))
+            new_texts = [str(v) for v in series]
+        elif has_options:
+            new_texts = [str(opt.text) for opt in updated_data.options]
+
+        
+        if qtype == "numeric_choice":
+            if not new_texts:
+                raise HTTPException(status_code=400, detail="numeric_choice requires options or numeric_scale")
+            for t in new_texts:
+                try:
+                    float(t.strip())
+                except Exception:
+                    raise HTTPException(status_code=400, detail="numeric_choice options must be numeric")
+
+        for t in new_texts:
+            db.add(OptionModel(text=t, question_id=question_id))
 
     db.commit()
     db.refresh(question)
+
     return {
         "id": question.id,
         "text": question.text,
         "type": question.type,
-        "form_id": question.form_id
+        "form_id": question.form_id,
+        "max_choices": question.max_choices,
     }
-
-@router.put("/api/forms/{form_id}/questions/{question_id}")
-def update_question(
-    form_id: int,
-    question_id: int,
-    updated_data: QuestionUpdate,
-    db: Session = Depends(get_db),
-    current_user: Optional[UserModel] = Depends(get_current_user_optional),
-    as_user: Optional[int] = Query(None),
-    x_impersonate_user: Optional[int] = Header(None, alias="X-Impersonate-User"),
-):
-    question = db.query(QuestionModel).filter(
-        QuestionModel.id == question_id,
-        QuestionModel.form_id == form_id
-    ).first()
-    if not question:
-        raise HTTPException(status_code=404, detail="Pitanje nije pronađeno")
-
-    form = db.query(FormModel).filter(FormModel.id == form_id).first()
-    if not form:
-        raise HTTPException(status_code=404, detail="Forma ne postoji.")
-
-    _ensure_can_edit_form(db, form, current_user, as_user, x_impersonate_user, owner_only=True)
 
 @router.get("/api/forms/{form_id}/collaborators", response_model=List[CollaboratorOut])
 def list_collaborators(
