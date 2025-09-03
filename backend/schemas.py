@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from typing import List, Optional, Union, Literal
 from fastapi import UploadFile
 
@@ -22,6 +22,11 @@ class LoginRequest(BaseModel):
 class OptionCreate(BaseModel):
     text: str
 
+class NumericScale(BaseModel):
+    start: float
+    end:   float
+    step:  float = Field(1, description="Može biti i negativan za silazni niz")
+
 class QuestionCreate(BaseModel):
     text: str
     type: str  
@@ -29,6 +34,11 @@ class QuestionCreate(BaseModel):
     order: Optional[int] = None
     options: Optional[List[OptionCreate]] = None
     max_choices: Optional[int] = None
+    numeric_values: Optional[List[float]] = None  
+    numeric_scale: Optional[NumericScale] = None  
+
+class QuestionUpdate(QuestionCreate):
+    pass
 
 class OptionOut(BaseModel):
     id: int
@@ -128,3 +138,8 @@ class UserUpdate(BaseModel):
     email: Optional[str] = None
     password: Optional[str] = None
     is_superadmin: Optional[bool] = None
+
+class NumericScale(BaseModel):
+    start: float
+    end:   float
+    step:  float = Field(1, description="Može biti i negativan za silazni niz")

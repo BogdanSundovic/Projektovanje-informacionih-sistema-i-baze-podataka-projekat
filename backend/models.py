@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, Boolean, DateTime, func, UniqueConstraint, Index
 from sqlalchemy.orm import relationship
 from database import Base
-
+from enum import Enum
 
 class UserModel(Base):
     __tablename__ = "users"
@@ -24,8 +24,7 @@ class FormModel(Base):
     questions = relationship("QuestionModel", back_populates="form", cascade="all, delete", passive_deletes=True)
     collaborators = relationship("CollaboratorModel",back_populates="form", cascade="all, delete-orphan",passive_deletes=True
 )
-    #created_at = Column(DateTime(timezone=True), server_default=func.now())
-    #updated_at = Column(DateTime(timezone=True), onupdate=func.now())    
+     
 
 class QuestionModel(Base):
     __tablename__ = "questions"
@@ -36,7 +35,6 @@ class QuestionModel(Base):
     type = Column(String, nullable=False) 
     is_required = Column(Boolean, default=True)
     order = Column(Integer)
-    #created_at = Column(DateTime(timezone=True), server_default=func.now())
     form = relationship("FormModel", back_populates="questions")
     options = relationship("OptionModel", back_populates="question", cascade="all, delete")
     max_choices = Column(Integer, nullable=True)
@@ -57,7 +55,7 @@ class CollaboratorModel(Base):
     id = Column(Integer, primary_key=True)
     form_id = Column(Integer, ForeignKey("forms.id", ondelete="CASCADE"), nullable=False, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    role = Column(String, nullable=False)  # 'viewer' ili 'editor'
+    role = Column(String, nullable=False) 
     __table_args__ = (
         UniqueConstraint('form_id', 'user_id', name='uq_collab_form_user'),
     )  
@@ -72,3 +70,13 @@ class AnswerModel(Base):
     user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     value = Column(String, nullable=False)
     submitted_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class QuestionType(str, Enum):
+    single_choice = "single_choice"
+    multiple_choice = "multiple_choice"
+    short_text    = "short_text"
+    long_text     = "long_text"
+    number        = "number"       
+    numeric_choice= "numeric_choice"
+    #date          = "date"         
+    #datetime      = "datetime"     
