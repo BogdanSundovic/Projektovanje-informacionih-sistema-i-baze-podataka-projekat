@@ -12,6 +12,9 @@ import FillFormPage from './pages/FillFormPage';
 import ViewResultsPage from './pages/ViewResultsPage';
 import EditFormPage from './pages/EditFormPage';
 import Navbar from './components/Navbar';
+import AdminUsersPage from "./pages/AdminUsersPage";
+import AdminUserFormsPage from "./pages/AdminUserFormsPage";
+import AdminEditUserPage from "./pages/AdminEditUserPage";
 
 import './styles/variables.css';
 import './styles/layout.css';
@@ -40,6 +43,9 @@ function App() {
         <Route path="/form/view/:id" element={<FillFormPage />} />
         <Route path="/form/results/:id" element={<PrivateRoute><ViewResultsPage /></PrivateRoute>} />
         <Route path="/form/edit/:id" element={<PrivateRoute><EditFormPage /></PrivateRoute>} />
+        <Route path="/admin/users" element={<AdminUsersPage />} />
+        <Route path="/admin/users/:userId/forms" element={<AdminUserFormsPage />} />
+        <Route path="/admin/users/:userId/edit" element={<AdminEditUserPage />} />
         <Route path="/" element={<PublicFormsPage />} />
         <Route path="*" element={<LoginPage />} /> {/* Baca na login */}
       </Routes>

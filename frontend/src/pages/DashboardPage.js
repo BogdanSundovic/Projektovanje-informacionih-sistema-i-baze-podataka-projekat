@@ -1,59 +1,41 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import api from "../services/api";
 
-const DashboardPage = () => {
-  const navigate = useNavigate();
+export default function DashboardPage() {
+  const nav = useNavigate();
+  const [isSuper, setIsSuper] = useState(false);
 
-  const handleMyFormsClick = () => {
-    navigate("/my-forms");
-  };
-
-  const handleCreateFormClick = () => {
-    navigate("/create-form");
-  };
+  useEffect(() => {
+    const run = async () => {
+      try {
+        const me = await api.get("/me");            // GET /api/me
+        setIsSuper(!!me.data?.is_superadmin);
+      } catch {
+        setIsSuper(false);
+      }
+    };
+    run();
+  }, []);
 
   return (
-    <div className="dashboard-container" style={styles.container}>
-      <h1 style={styles.title}>Dobrodošao na Dashboard</h1>
+    <div className="container" style={{ maxWidth: 900, margin: "0 auto" }}>
+      <h1 className="forms-title">Dobrodošao na Dashboard</h1>
 
-      <div style={styles.buttonContainer}>
-        <button onClick={handleMyFormsClick} style={styles.button}>
+      <div className="actions-col">
+        <button className="form-button" onClick={() => nav("/my-forms")}>
           Moje Forme
         </button>
-        <button onClick={handleCreateFormClick} style={styles.button}>
+        <button className="form-button" onClick={() => nav("/create-form")}>
           Kreiraj Novu Formu
         </button>
+
+        {isSuper && (
+          <button className="form-button" onClick={() => nav("/admin/users")}>
+            Upravljaj korisnicima
+          </button>
+        )}
       </div>
     </div>
   );
-};
-
-const styles = {
-  container: {
-    padding: "2rem",
-    maxWidth: "800px",
-    margin: "0 auto",
-    textAlign: "center",
-  },
-  title: {
-    fontSize: "2rem",
-    marginBottom: "2rem",
-  },
-  buttonContainer: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "1rem",
-    alignItems: "center",
-  },
-  button: {
-    padding: "1rem 2rem",
-    fontSize: "1rem",
-    backgroundColor: "#2e86de",
-    color: "#fff",
-    border: "none",
-    borderRadius: "8px",
-    cursor: "pointer",
-  },
-};
-
-export default DashboardPage;
+}
