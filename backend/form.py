@@ -1070,6 +1070,38 @@ def update_question(
         "max_choices": question.max_choices,
     }
 
+@router.delete("/api/forms/{form_id}/questions/{question_id}", status_code=204)
+def delete_question(
+    form_id: int,
+    question_id: int,
+    db: Session = Depends(get_db),
+    current_user: Optional[UserModel] = Depends(get_current_user_optional),
+    as_user: Optional[int] = Query(None),
+    x_impersonate_user: Optional[int] = Header(None, alias="X-Impersonate-User"),
+):
+
+    form = db.query(FormModel).filter(FormModel.id == form_id).first()
+    if not form:
+        raise HTTPException(status_code=404, detail="Forma ne postoji.")
+
+    question = (
+        db.query(QuestionModel)
+        .filter(QuestionModel.id == question_id, QuestionModel.form_id == form_id)
+        .first()
+    )
+    if not question:
+        raise HTTPException(status_code=404, detail="Pitanje nije pronađeno.")
+
+    _ensure_can_edit_form(db, form, current_user, as_user, x_impersonate_user, owner_only=False)
+
+    db.query(AnswerModel).filter(AnswerModel.question_id == question_id).delete(synchronize_session=False)
+    db.query(OptionModel).filter(OptionModel.question_id == question_id).delete(synchronize_session=False)
+
+    db.delete(question)
+    db.commit()
+   
+
+
 @router.get("/api/forms/{form_id}/collaborators", response_model=List[CollaboratorOut])
 def list_collaborators(
     form_id: int,
