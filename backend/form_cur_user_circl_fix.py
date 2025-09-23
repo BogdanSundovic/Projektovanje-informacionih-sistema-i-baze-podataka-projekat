@@ -5,12 +5,14 @@ from sqlalchemy.orm import Session
 from backend.database import SessionLocal
 from backend.models import UserModel 
 from typing import Optional
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
-SECRET_KEY = "rumadotokija"
-ALGORITHM = "HS256"
+SECRET_KEY = os.getenv("SECRET_KEY")
+ALGORITHM = os.getenv("ALGORITHM", "HS256")
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token", auto_error=False)
-
 
 def get_db():
     db = SessionLocal()

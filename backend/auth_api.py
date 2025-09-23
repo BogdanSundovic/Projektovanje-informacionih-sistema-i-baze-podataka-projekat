@@ -2,30 +2,28 @@ from fastapi import FastAPI, HTTPException, Depends, APIRouter
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from sqlalchemy import Column, Integer, String, create_engine
+from sqlalchemy import Column, Integer, String, create_engine, or_
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from passlib.context import CryptContext
-from datetime import datetime, timedelta, timezone
-import jwt
+from datetime import datetime, timedelta
 from backend.form import FormModel, FormCreate
 from backend.database import Base, engine, SessionLocal
-from jose import JWTError
-from backend.models import UserModel
+from jose import JWTError, jwt
+from backend.models import UserModel, CollaboratorModel, FormModel, AnswerModel
 from typing import List, Optional
 from backend.schemas import *
 from fastapi.staticfiles import StaticFiles
 import os
+from dotenv import load_dotenv
+from backend.form import *
+
+load_dotenv()
 
 # Config
-SECRET_KEY = "rumadotokija"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 2880
-DATABASE_URL = "postgresql://postgres:admin123@localhost/baze2_db" 
-# DB Setup
-#Base = declarative_base()
-#engine = create_engine(DATABASE_URL)
-#SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+SECRET_KEY = os.getenv("SECRET_KEY")
+ALGORITHM = os.getenv("ALGORITHM", "HS256")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "2880"))
 
 # App Init
 app = FastAPI()
@@ -47,16 +45,13 @@ def verify_password(plain_password, hashed_password):
 def get_password_hash(password):
     return pwd_context.hash(password)
 
-
-Base.metadata.create_all(bind=engine)
-
 # Auth
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token", auto_error=False)
 
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=15))
+    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=15))
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
@@ -86,8 +81,15 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
         if user is None:
             raise HTTPException(status_code=401, detail="User not found")
         return user
-    except jwt.PyJWTError:
+    except JWTError:
         raise HTTPException(status_code=401, detail="Token error")
+
+def _is_self_or_superadmin(current_user: UserModel, target_user_id: int) -> bool:
+    return bool(current_user.is_superadmin) or current_user.id == target_user_id
+
+def _ensure_superadmin(current_user: UserModel):
+    if not current_user.is_superadmin:
+        raise HTTPException(status_code=403, detail="Samo super admin ima pristup ovoj akciji.")
 
 # Routes
 @app.post("/api/register")
@@ -122,8 +124,10 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
 @app.get("/me")
 def read_users_me(current_user: UserModel = Depends(get_current_user)):
     return {
+        "id": current_user.id, 
         "username": current_user.username,
         "email": current_user.email,
+        "is_superadmin": getattr(current_user, "is_superadmin", False)
         
     }
 
@@ -145,8 +149,10 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
 @app.get("/api/me")
 def read_me(current_user: UserModel = Depends(get_current_user)):
     return {
+        "id": current_user.id, 
         "username": current_user.username,
-        "email": current_user.email
+        "email": current_user.email,
+        "is_superadmin": current_user.is_superadmin,
     }
 
 
@@ -169,8 +175,115 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
         raise credentials_exception
     return user
 
+@app.get("/api/users/search")
+def search_users(
+    q: str,
+    limit: int = 10,
+    exclude_form_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_user)
+):
+    q = (q or "").strip()
+    if len(q) < 2:
+        raise HTTPException(status_code=400, detail="Parametar q mora imati najmanje 2 karaktera.")
 
+    base_query = db.query(UserModel).filter(
+        or_(UserModel.username.ilike(f"%{q}%"), UserModel.email.ilike(f"%{q}%"))
+    )
+
+    if exclude_form_id is not None:
+        from models import FormModel  
+        form = db.query(FormModel).filter(FormModel.id == exclude_form_id).first()
+        if not form:
+            raise HTTPException(status_code=404, detail="Forma ne postoji.")
+
+        collab_user_ids = db.query(CollaboratorModel.user_id).filter(
+            CollaboratorModel.form_id == exclude_form_id
+        )
+
+        base_query = base_query.filter(UserModel.id != form.owner_id)
+        base_query = base_query.filter(~UserModel.id.in_(collab_user_ids))
+
+    users = base_query.limit(limit).all()
+
+    return [{"id": u.id, "username": u.username, "email": u.email} for u in users]
 
 @app.get("/api/users")
-def get_users(db: Session = Depends(get_db)):
-    return db.query(UserModel).all()
+def get_users(db: Session = Depends(get_db), current_user: UserModel = Depends(get_current_user)):
+    users = db.query(UserModel).all()
+    return [
+        {
+            "id": u.id,
+            "username": u.username,
+            "email": u.email,
+            "is_superadmin": bool(getattr(u, "is_superadmin", False)),
+        }
+        for u in users
+    ]
+@app.put("/api/users/{user_id}")
+def update_user(
+    user_id: int,
+    data: UserUpdate,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_user),
+):
+    if not is_superadmin(current_user) and current_user.id != user_id:
+         HTTPException(status_code=403, detail="Možete izmeniti samo svoj nalog.")
+
+    if not _is_self_or_superadmin(current_user, user_id):
+        raise HTTPException(status_code=403, detail="Samo super admin ili vlasnik naloga može da izmeni korisnika.")
+
+    user = db.query(UserModel).filter(UserModel.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Korisnik nije pronađen")
+
+    if data.username and data.username != user.username:
+        if db.query(UserModel).filter(UserModel.username == data.username).first():
+            raise HTTPException(status_code=400, detail="Korisničko ime je zauzeto.")
+        user.username = data.username
+
+    if data.email and data.email != user.email:
+        if db.query(UserModel).filter(UserModel.email == data.email).first():
+            raise HTTPException(status_code=400, detail="Email je zauzet.")
+        user.email = data.email
+
+    if data.password:
+        user.hashed_password = get_password_hash(data.password)
+
+    if data.is_superadmin is not None:
+        if not current_user.is_superadmin:
+            raise HTTPException(status_code=403, detail="Samo super admin može menjati is_superadmin polje.")
+        user.is_superadmin = data.is_superadmin
+
+    db.commit()
+    db.refresh(user)
+    return {"id": user.id, "username": user.username, "email": user.email, "is_superadmin": user.is_superadmin}
+
+
+@app.delete("/api/users/{user_id}", status_code=204)
+def delete_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_user),
+):
+    if not is_superadmin(current_user) and current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="Možete obrisati samo svoj nalog.")
+
+    if not _is_self_or_superadmin(current_user, user_id):
+        raise HTTPException(status_code=403, detail="Samo super admin ili vlasnik naloga može da obriše korisnika.")
+
+    user = db.query(UserModel).filter(UserModel.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Korisnik nije pronađen")
+
+    if user.is_superadmin:
+        admins = db.query(UserModel).filter(UserModel.is_superadmin == True).count()
+        if admins == 1:
+            raise HTTPException(status_code=409, detail="Ne možeš obrisati poslednjeg super admina.")
+
+    db.query(AnswerModel).filter(AnswerModel.user_id == user_id).update(
+        {AnswerModel.user_id: None}, synchronize_session=False
+    )
+
+    db.delete(user)
+    db.commit()

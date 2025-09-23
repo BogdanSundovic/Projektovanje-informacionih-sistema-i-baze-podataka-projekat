@@ -38,10 +38,9 @@ def _create_full_form(headers, is_public=True):
     add_q("Long?",   "long_text", False)
     add_q("One?",    "radio", True,  options=options_json)
     add_q("Many?",   "checkbox", False, max_choices=2, options=options_json)
-    add_q("Num?",    "number", False)
     add_q("Date?",   "date", False)
-    add_q("Time?",   "time", False)
-
+    add_q("Num?",   "numeric_choice", False, options=json.dumps([{"text":"1"},{"text":"2"},{"text":"3"}]))
+    add_q("When?", "datetime", False)
     return form_id
 
 def _answers_payload(form_id, headers=None):
@@ -55,9 +54,10 @@ def _answers_payload(form_id, headers=None):
             {"question_id": q["Long?"],  "answer": "dovidjenja"},
             {"question_id": q["One?"],   "answer": "A"},
             {"question_id": q["Many?"],  "answer": ["A", "B"]},
-            {"question_id": q["Num?"],   "answer": 5},
             {"question_id": q["Date?"],  "answer": "2025-08-01"},
-            {"question_id": q["Time?"],  "answer": "12:34"},
+            {"question_id": q["Num?"],  "answer": "2"},
+            {"question_id": q["When?"],  "answer": "2025-08-01T12:34:00"},
+            
         ]
     }
 
