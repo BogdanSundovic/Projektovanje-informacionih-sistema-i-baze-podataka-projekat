@@ -6,4 +6,19 @@ const instance = axios.create({
 
 console.log("🔍 BASE URL:", process.env.REACT_APP_API_URL + '/api');
 
+
+instance.interceptors.request.use((config) => {
+  const token = localStorage.getItem("token");
+  
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  
+  config.headers["Accept"] = "application/json";
+  config.headers["ngrok-skip-browser-warning"] = "true"; // Zaobilazi ngrok blokadu
+  
+  return config;
+});
+
+
 export default instance;
