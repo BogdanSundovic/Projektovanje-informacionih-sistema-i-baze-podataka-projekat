@@ -38,10 +38,12 @@ function CreateFormPage() {
 
       // 1) Kreiraj formu
       const formRes = await api.post('/forms', {
+
         name,
         description,
         is_public: isPublic,
       });
+
       const formId = formRes.data.id;
       console.log('🆔 Form kreirana sa ID:', formId);
 
@@ -146,11 +148,13 @@ function CreateFormPage() {
       }, 1000);
     } catch (err) {
       console.error('Greška pri slanju forme:', err);
+
       alert('Došlo je do greške.');
     }
   };
 
   return (
+
     <div className="page">
       <div className="container">
         <div className="form-container">
@@ -213,6 +217,7 @@ function CreateFormPage() {
           </div>
         </div>
       </div>
+
     </div>
   );
 }

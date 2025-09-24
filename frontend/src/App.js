@@ -1,7 +1,9 @@
+
 // src/App.js
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import MyFormsPage from "./pages/MyFormsPage";
+
 import CreateFormPage from './pages/CreateFormPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -34,6 +36,7 @@ function App() {
   return (
     <Router>
       <Navbar />
+
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
@@ -48,6 +51,7 @@ function App() {
         <Route path="/admin/users/:userId/edit" element={<AdminEditUserPage />} />
         <Route path="/" element={<PublicFormsPage />} />
         <Route path="*" element={<LoginPage />} /> {/* Baca na login */}
+
       </Routes>
     </Router>
   );

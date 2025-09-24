@@ -6,6 +6,7 @@ const instance = axios.create({
 
 console.log("🔍 BASE URL:", process.env.REACT_APP_API_URL + '/api');
 
+
 instance.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
   
@@ -18,5 +19,6 @@ instance.interceptors.request.use((config) => {
   
   return config;
 });
+
 
 export default instance;

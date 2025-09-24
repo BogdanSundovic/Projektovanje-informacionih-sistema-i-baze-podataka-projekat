@@ -1,3 +1,4 @@
+
 /* src/styles/form.css */
 
 /* FORM WRAPPER */
@@ -19,10 +20,12 @@
 
 /* INPUT GRUPE */
 .input-group { margin-bottom: 16px; }
+
 .input-group label {
   display: block;
   margin-bottom: 6px;
   font-size: 14px;
+
   color: var(--muted);
   font-weight: 600;
 }
@@ -345,3 +348,4 @@ button:active,
   border-color: color-mix(in oklab, #ef4444 30%, var(--border));
   color: #991b1b;
 }
+

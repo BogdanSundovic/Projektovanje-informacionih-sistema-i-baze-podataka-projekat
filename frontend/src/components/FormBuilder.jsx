@@ -1,17 +1,22 @@
 // src/components/FormBuilder.jsx
+
 import React from 'react';
 import { FiPlusCircle, FiCopy, FiArrowUp, FiArrowDown, FiTrash2 } from 'react-icons/fi';
+
 import QuestionField from './QuestionField';
 
 function FormBuilder({ questions, setQuestions }) {
   const addQuestion = () => {
     setQuestions([
       ...questions,
+ FrontEnd2
       { text: '', type: 'short_text', is_required: false, options: [] },
+
     ]);
   };
 
   const updateQuestion = (index, updated) => {
+
     const next = [...questions];
     next[index] = updated;
     setQuestions(next);
@@ -46,10 +51,12 @@ function FormBuilder({ questions, setQuestions }) {
     const next = [...questions];
     [next[index], next[newIdx]] = [next[newIdx], next[index]];
     setQuestions(next);
+
   };
 
   return (
     <div>
+
       {(!questions || questions.filter(Boolean).length === 0) && (
         <p className="forms-empty">Još nema pitanja. Dodaj prvo pitanje.</p>
       )}
@@ -117,6 +124,7 @@ function FormBuilder({ questions, setQuestions }) {
           Dodaj pitanje
         </button>
       </div>
+
     </div>
   );
 }
