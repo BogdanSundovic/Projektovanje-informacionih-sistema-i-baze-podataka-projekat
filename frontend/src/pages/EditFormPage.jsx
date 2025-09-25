@@ -25,6 +25,11 @@ function EditFormPage() {
     ((questions?.filter(Boolean).length ?? 0) > 0);
 
 
+  const canSave =
+    Boolean((form?.name ?? '').trim()) &&
+    ((questions?.filter(Boolean).length ?? 0) > 0);
+
+
   // --- helpers ---
 
   const backendToEditorType = (t) =>
@@ -171,8 +176,10 @@ function EditFormPage() {
 
         } else {
 
-          // placeholder sa praznim filename-om — backend ga preskače
+
+    
           fd.append('option_images', new Blob([], { type: 'application/octet-stream' }), '');
+
 
         }
       });
@@ -329,6 +336,8 @@ function EditFormPage() {
             );
           })
         );
+
+        
 
         
 
