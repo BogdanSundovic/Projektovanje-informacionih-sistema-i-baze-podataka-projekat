@@ -1,0 +1,40 @@
+:root {
+  /* boje */
+  --bg: #f7f7fb;
+  --surface: #ffffff;
+  --text: #0f172a;        /* tamni tekst */
+  --muted: #64748b;       /* sekundarni tekst */
+  --primary: #1d4ed8;     /* plava */
+  --primary-contrast: #ffffff;
+  --border: #e5e7eb;      /* ivice */
+  --ring: #93c5fd;
+
+  /* stil tokeni */
+  --radius-lg: 12px;
+  --radius-md: 10px;
+  --shadow-sm: 0 2px 6px rgba(0,0,0,.06);
+  --shadow-md: 0 8px 24px rgba(0,0,0,.08);
+
+  color-scheme: light;
+}
+
+/* Dark tema (aktivira se atributom data-theme="dark" na <html>) */
+:root[data-theme="dark"] {
+  --bg: #0b1220;
+  --surface: #0f172a;
+  --text: #e5e7eb;
+  --muted: #94a3b8;
+  --primary: #60a5fa;
+  --primary-contrast: #0b1220;
+  --border: #1f2937;
+  --ring: #2563eb;
+
+  color-scheme: dark;
+}
+
+/* Ako nema localStorage podešavanja, koristi OS preferencu */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]):not([data-theme="dark"]) {
+    color-scheme: dark;
+  }
+}

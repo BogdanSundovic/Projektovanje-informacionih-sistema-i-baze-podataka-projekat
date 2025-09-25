@@ -1,0 +1,384 @@
+
+/* src/styles/form.css */
+
+/* FORM WRAPPER */
+.form-container {
+  max-width: 480px;
+  margin: 80px auto;
+  padding: 28px;
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  font-family: inherit;
+}
+.form-container h2 {
+  text-align: center;
+  margin-bottom: 20px;
+  color: var(--text);
+}
+
+/* INPUT GRUPE */
+.input-group { margin-bottom: 16px; }
+
+.input-group label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 14px;
+
+  color: var(--muted);
+  font-weight: 600;
+}
+
+/* VAŽNO: ne stiluj file input kao tekstualni */
+.input-field,
+.question-block input[type="text"],
+.question-block select,
+.form-container input:not([type="file"]),
+.form-container textarea {
+  display: block;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 15px;
+  color: var(--text);
+  background: var(--surface);
+  transition: border-color .2s, box-shadow .2s, background .2s;
+  margin-bottom: 12px;
+}
+
+.input-field:focus,
+.question-block input[type="text"]:focus,
+.question-block select:focus,
+.form-container input:focus,
+.form-container textarea:focus {
+  outline: none;
+  border-color: color-mix(in oklab, var(--primary) 50%, var(--border));
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 60%, transparent);
+}
+
+/* BUTTONS */
+button,
+.form-button {
+  width: 100%;
+  padding: 12px;
+  background-color: var(--primary);
+  color: var(--primary-contrast);
+  font-weight: 700;
+  font-size: 16px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: transform .15s ease, filter .15s ease, background-color .15s ease;
+}
+button:hover,
+.form-button:hover { filter: brightness(1.05); }
+button:active,
+.form-button:active { transform: translateY(1px); }
+.button-group { display: flex; gap: 10px; }
+.buttonAlone { margin-bottom: 12px; }
+
+/* LISTE FORM-I I KARTICE */
+.forms-container {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.forms-title {
+  font-size: 2rem;
+  margin-bottom: 2rem;
+  text-align: center;
+}
+.forms-loading,
+.forms-empty { text-align: center; margin-top: 2rem; color: var(--muted); }
+
+.forms-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  justify-items: center;
+}
+.forms-grid:has(.form-card:only-child) {
+  justify-content: center;
+  grid-template-columns: 1fr;
+}
+.forms-grid:has(.form-card:nth-child(2):last-child) {
+  grid-template-columns: repeat(2, 1fr);
+  justify-content: center;
+}
+
+.form-card {
+  background-color: var(--surface);
+  border-radius: 12px;
+  padding: 1.5rem;
+  width: 100%;
+  max-width: 350px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 200px;
+  transition: transform .15s ease, box-shadow .2s ease, border-color .2s ease;
+}
+.form-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: color-mix(in oklab, var(--primary) 30%, var(--border));
+}
+
+.form-card-title { font-size: 1.2rem; margin-bottom: 0.5rem; color: var(--text); }
+.form-card-desc { flex-grow: 1; color: var(--muted); font-size: 0.95rem; margin-bottom: 1rem; }
+
+.forms-view-all { text-align: center; margin-top: 2rem; }
+.form-button.view-all { background-color: #555; }
+
+/* RESPONSIVE */
+@media (max-width: 1024px) { .forms-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 600px)  { .forms-grid { grid-template-columns: 1fr; } }
+
+/* EDITOR PITANJA */
+.form-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 1rem; }
+.form-question-list { display: flex; flex-direction: column; gap: 16px; margin-bottom: 20px; }
+
+.form-question {
+  background-color: color-mix(in oklab, var(--surface) 92%, var(--bg));
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+}
+
+.form-question .form-button { margin-top: 8px; }
+.form-button svg { margin-right: 6px; vertical-align: middle; }
+
+.question-block {
+  display: flex; flex-wrap: wrap; align-items: center;
+  gap: 12px; margin-bottom: 12px;
+}
+.question-block label {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 14px; flex-shrink: 0; color: var(--text);
+}
+
+/* Inline redovi i toggle za checkbox */
+.form-row { display: grid; gap: 12px; margin-bottom: 14px; }
+.form-row.inline { grid-template-columns: 1fr auto; align-items: center; }
+
+.switch {
+  --h: 28px;
+  --w: 52px;
+  position: relative; display: inline-block; width: var(--w); height: var(--h);
+}
+.switch input { display: none; }
+.slider {
+  position: absolute; inset: 0;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  transition: background .2s, border-color .2s;
+}
+.slider:before {
+  content: "";
+  position: absolute;
+  height: 22px; width: 22px;
+  left: 3px; top: 50%; transform: translateY(-50%);
+  background: var(--surface);
+  border-radius: 50%;
+  box-shadow: var(--shadow-sm);
+  transition: transform .2s;
+}
+.switch input:checked + .slider {
+  background: color-mix(in oklab, var(--primary) 60%, var(--border));
+  border-color: color-mix(in oklab, var(--primary) 60%, var(--border));
+}
+.switch input:checked + .slider:before { transform: translate(24px, -50%); }
+
+/* Dugmad kolona */
+.actions-col { display: grid; gap: 10px; margin-top: 14px; }
+
+/* Option row (3 kolone: bullet | tekst | akcije) */
+.option-row {
+  display: grid;
+  grid-template-columns: 40px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.option-bullet {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.option-actions { display: flex; gap: 8px; }
+
+/* tekstualni input u opciji */
+.option-text {
+  display: block;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  caret-color: var(--text);
+  min-height: 40px;
+}
+
+/* file inputi */
+.file-field {            /* za sliku pitanja */
+  display: block;
+  width: 100%;
+  padding: 6px 0;
+  margin-bottom: 12px;
+}
+.option-file { display: none; } /* pravi file input za opciju je sakriven */
+.option-file-btn {
+  display: inline-block;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #f8fafc;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* ghost dugme za Ukloni (već si imao) */
+.btn-ghost {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: transparent;
+
+  color: var(--text-opposite);
+
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-ghost:hover {
+  background: color-mix(in oklab, var(--text) 8%, transparent);
+}
+
+/* preview sličice */
+.question-thumb {
+  width: 120px;
+  height: 80px;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 12px;
+  box-shadow: var(--shadow-sm);
+}
+
+.option-thumb {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  object-fit: cover;
+  box-shadow: var(--shadow-sm);
+  background: var(--surface);
+}
+
+/* COLLABORATORS PANEL */
+.collab-panel {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  background: color-mix(in oklab, var(--surface) 92%, var(--bg));
+  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+  margin-top: 10px;
+}
+
+.collab-header { margin-bottom: 10px; }
+.collab-header h3 { margin: 0 0 6px; }
+
+.collab-search { margin-bottom: 12px; }
+.collab-results {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.collab-result-row,
+.collab-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.collab-result-row:last-child,
+.collab-row:last-child { border-bottom: none; }
+
+.collab-user { display: grid; gap: 2px; }
+.collab-name { font-weight: 600; color: var(--text); }
+.collab-email { font-size: 13px; }
+
+.collab-actions { display: flex; gap: 8px; align-items: center; }
+.role-select {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+}
+
+/* poruke */
+.collab-error { color: #b91c1c; margin: 6px 0; }
+.collab-hint { margin: 6px 0; }
+
+/* Badges */
+.badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  font-size: 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: color-mix(in oklab, var(--text) 6%, transparent);
+  color: var(--text);
+  vertical-align: middle;
+}
+.badge-lock {
+  background: color-mix(in oklab, #ef4444 15%, var(--surface));
+  border-color: color-mix(in oklab, #ef4444 30%, var(--border));
+  color: #991b1b;
+}
+
+.form-button:disabled { opacity: .6; cursor: not-allowed; }
+.forms-search { margin: 12px 0 20px; }
+
+.btn-share {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border, #dcdcdc);
+  background: var(--surface, #fff);
+  cursor: pointer;
+}
+.btn-share:hover { background: var(--hover, #f5f5f5); }
+/* u form.css ili layout.css */
+.btn-share {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-opposite);
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border, #dcdcdc);
+  background: var(--surface, #fff);
+  cursor: pointer;
+}
+.btn-share:hover { background: var(--hover, #f5f5f5); }
+
+
+
