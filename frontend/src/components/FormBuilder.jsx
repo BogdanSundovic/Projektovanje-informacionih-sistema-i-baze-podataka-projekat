@@ -3,7 +3,7 @@ import React from 'react';
 import { FiPlusCircle, FiCopy, FiArrowUp, FiArrowDown, FiTrash2 } from 'react-icons/fi';
 import QuestionField from './QuestionField';
 
-function FormBuilder({ questions, setQuestions }) {
+function FormBuilder({ questions, setQuestions,onRemoveQuestion = () => {} }) {
   const addQuestion = () => {
     setQuestions([
       ...questions,
@@ -18,6 +18,10 @@ function FormBuilder({ questions, setQuestions }) {
   };
 
   const removeQuestion = (index) => {
+    const removed = questions[index];
+    if (removed?.id) {
+      onRemoveQuestion(removed); // više nije "no-undef"
+    }
     const next = [...questions];
     next.splice(index, 1);
     setQuestions(next);
@@ -29,11 +33,7 @@ function FormBuilder({ questions, setQuestions }) {
     const clone = {
       ...src,
       id: undefined, // novi entitet
-      // zadrži image reference (File/url), resetuj id-eve opcija
-      options: (src.options || []).map((o) => ({
-        ...o,
-        id: undefined,
-      })),
+      options: (src.options || []).map((o) => ({ ...o, id: undefined })),
     };
     const next = [...questions.slice(0, index + 1), clone, ...questions.slice(index + 1)];
     setQuestions(next);
