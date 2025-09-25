@@ -9,7 +9,6 @@ function FormBuilder({ questions, setQuestions,onRemoveQuestion = () => {} }) {
   const addQuestion = () => {
     setQuestions([
       ...questions,
- FrontEnd2
       { text: '', type: 'short_text', is_required: false, options: [] },
 
     ]);
