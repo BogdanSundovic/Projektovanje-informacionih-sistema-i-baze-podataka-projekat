@@ -60,12 +60,16 @@ const Navbar = () => {
     <nav className="navbar">
       <div className="navbar-left">
         <Link
-          to={isLoggedIn ? '/dashboard' : '/public-forms'}
+          to={isLoggedIn ? '/dashboard' : '/'}
           className="navbar-home"
         >
           Home
         </Link>
-
+        {isLoggedIn &&(
+          <Link to="/" className="navbar-button">
+            Javne forme
+          </Link>
+        )}
         {showBack && (
           <button onClick={handleBack} className="navbar-button back-button">
             <FaArrowLeft className="back-icon" />

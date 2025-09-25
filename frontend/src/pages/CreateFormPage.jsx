@@ -10,27 +10,6 @@ function CreateFormPage() {
   const canSave = name.trim() !== '' && (questions?.filter(Boolean).length ?? 0) > 0;
 
 
-  // helper: parsiranje ručno unete liste brojeva
-  const parseNumericList = (txt, fallback = []) => {
-    if (!txt) return fallback;
-    return Array.from(
-      new Set(
-        txt
-          .replace(/,/g, ' ')
-          .split(/\s+/)
-          .map((s) => Number(s.trim()))
-          .filter(Number.isFinite)
-      )
-    ).sort((a, b) => a - b);
-  };
-
-  const normalizeRange = (start, end, step) => {
-    let s = Number(step);
-    if (!Number.isFinite(s) || s === 0) s = 1;
-    if (start < end && s < 0) s = Math.abs(s);
-    if (start > end && s > 0) s = -Math.abs(s);
-    return { start, end, step: s };
-  };
 
   // helper: parsiranje ručno unete liste brojeva
   const parseNumericList = (txt, fallback = []) => {
@@ -53,6 +32,8 @@ function CreateFormPage() {
     if (start > end && s > 0) s = -Math.abs(s);
     return { start, end, step: s };
   };
+
+
 
   const handleSave = async () => {
 

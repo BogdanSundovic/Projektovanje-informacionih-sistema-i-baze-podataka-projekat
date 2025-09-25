@@ -18,6 +18,12 @@ function EditFormPage() {
   const [form, setForm] = useState(null);
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const originalQuestionsRef = useRef([]);
+
+  const canSave =
+    Boolean((form?.name ?? '').trim()) &&
+    ((questions?.filter(Boolean).length ?? 0) > 0);
+
 
   const canSave =
     Boolean((form?.name ?? '').trim()) &&
@@ -65,15 +71,15 @@ function EditFormPage() {
   };
 
   // JSON telo za PUT (update postojećeg pitanja)
-  const buildQuestionUpdateBody = (q) => {
-    // osnovna polja
+  const buildQuestionUpdateBody = (q, { includeOptions = true } = {}) => {
     const base = {
       text: q.text || '',
       type: editorToBackendType(q.type),
       is_required: !!q.is_required,
     };
 
-    // klasični choice tipovi
+    if (!includeOptions) return base;
+
     if (q.type === 'single_choice' || q.type === 'multiple_choice') {
       const body = { ...base };
       body.options = toOptionObjects(q.options).map(({ text }) => ({ text: text || '' }));
@@ -83,12 +89,10 @@ function EditFormPage() {
       return body;
     }
 
-    // numeric_choice
     if (q.type === 'numeric_choice') {
       const mode = q.numeric_mode || (q.numMode === 'list' ? 'list' : 'range');
 
       if (mode === 'list') {
-        // izvući brojeve pa ih poslati kao options (BE tako želi)
         const values = Array.isArray(q.numeric_values) && q.numeric_values.length
           ? q.numeric_values
           : parseNumericList(q.numListText, (q.options || []).map(o => Number(o.text)).filter(Number.isFinite));
@@ -96,11 +100,10 @@ function EditFormPage() {
         return {
           ...base,
           type: 'numeric_choice',
-          options: values.map(v => ({ text: String(v) })), // << ključno
+          options: values.map(v => ({ text: String(v) })),
         };
       }
 
-      // range -> numeric_scale
       const start = q.numeric_scale?.start ?? Number(q.numMin);
       const end   = q.numeric_scale?.end   ?? Number(q.numMax);
       const step0 = q.numeric_scale?.step  ?? Number(q.numStep || 1);
@@ -113,7 +116,6 @@ function EditFormPage() {
       };
     }
 
-    // ostali tipovi
     return base;
   };
 
@@ -155,17 +157,29 @@ function EditFormPage() {
     }
 
     if (q.type === 'single_choice' || q.type === 'multiple_choice') {
-      const optionList = toOptionObjects(q.options).map(({ text }) => ({ text: text || '' }));
-      fd.append('options', JSON.stringify(optionList));
+      const keptOptions = (q.options || []).filter(
+        (opt) => (opt?.text || '').trim() !== ''
+      );
+
+      fd.append(
+        'options',
+        JSON.stringify(keptOptions.map((opt) => ({ text: opt.text.trim() })))
+      );
+
       if (q.type === 'multiple_choice' && q.max_choices) {
         fd.append('max_choices', String(Number(q.max_choices)));
       }
-      (q.options || []).forEach((opt) => {
-        if (opt && typeof opt === 'object' && opt.image) {
+
+      keptOptions.forEach((opt) => {
+        if (opt && opt.image) {
           fd.append('option_images', opt.image);
 
         } else {
-          fd.append('option_images', new Blob([], { type: 'application/octet-stream' }));
+
+
+    
+          fd.append('option_images', new Blob([], { type: 'application/octet-stream' }), '');
+
 
         }
       });
@@ -233,6 +247,7 @@ function EditFormPage() {
           capabilities: data.capabilities || null,
         });
         setQuestions(normalizedQuestions);
+        originalQuestionsRef.current = JSON.parse(JSON.stringify(normalizedQuestions));
       } catch (err) {
         console.error('Greška pri učitavanju forme:', err?.response?.status, err?.response?.data);
       } finally {
@@ -240,6 +255,47 @@ function EditFormPage() {
       }
     })();
   }, [id, location.search]);
+
+  const optionsChanged = (q) => {
+    if (!q?.id) return false; // samo za postojeća pitanja
+    const original = (originalQuestionsRef.current || []).find((oq) => oq.id === q.id);
+    if (!original) return true;
+
+    const currTexts = (q.options || [])
+      .map((o) => String(o?.text || '').trim())
+      .filter(Boolean);
+    const origTexts = (original.options || [])
+      .map((o) => String(o?.text || '').trim())
+      .filter(Boolean);
+
+    if (currTexts.length !== origTexts.length) return true;
+    for (let i = 0; i < currTexts.length; i++) {
+      if (currTexts[i] !== origTexts[i]) return true;
+    }
+
+    if (q.type === 'multiple_choice') {
+      const currMax = q.max_choices !== '' && q.max_choices != null ? Number(q.max_choices) : '';
+      const origMax = original.max_choices !== '' && original.max_choices != null ? Number(original.max_choices) : '';
+      if (currMax !== origMax) return true;
+    }
+
+    if (q.type === 'numeric_choice') {
+      const currNum = {
+        numeric_mode: q.numeric_mode || null,
+        numeric_values: Array.isArray(q.numeric_values) ? q.numeric_values : null,
+        numeric_scale: q.numeric_scale || null,
+      };
+      const origNum = {
+        numeric_mode: original.numeric_mode || null,
+        numeric_values: Array.isArray(original.numeric_values) ? original.numeric_values : null,
+        numeric_scale: original.numeric_scale || null,
+      };
+      if (JSON.stringify(currNum) !== JSON.stringify(origNum)) return true;
+    }
+
+    return false;
+  };
+
 
   // --- čuvanje: meta + UPDATE postojećih + CREATE novih ---
   const handleSave = async () => {
@@ -270,15 +326,18 @@ function EditFormPage() {
 
       // 2) UPDATE svih postojećih pitanja (PUT JSON)
       const existing = questions.filter((q) => !!q.id);
-      await Promise.all(
-        existing.map((q) =>
-          api.put(
-            `/forms/${id}/questions/${q.id}`,
-            buildQuestionUpdateBody(q),
-            { headers: { 'Content-Type': 'application/json' } }
-          )
-        )
-      );
+        await Promise.all(
+          existing.map((q) => {
+            const includeOptions = optionsChanged(q);
+            return api.put(
+              `/forms/${id}/questions/${q.id}`,
+              buildQuestionUpdateBody(q, { includeOptions }),
+              { headers: { 'Content-Type': 'application/json' } }
+            );
+          })
+        );
+
+        
 
         
 
