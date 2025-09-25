@@ -32,11 +32,35 @@ function CreateFormPage() {
     return { start, end, step: s };
   };
 
+  // helper: parsiranje ručno unete liste brojeva
+  const parseNumericList = (txt, fallback = []) => {
+    if (!txt) return fallback;
+    return Array.from(
+      new Set(
+        txt
+          .replace(/,/g, ' ')
+          .split(/\s+/)
+          .map((s) => Number(s.trim()))
+          .filter(Number.isFinite)
+      )
+    ).sort((a, b) => a - b);
+  };
+
+  const normalizeRange = (start, end, step) => {
+    let s = Number(step);
+    if (!Number.isFinite(s) || s === 0) s = 1;
+    if (start < end && s < 0) s = Math.abs(s);
+    if (start > end && s > 0) s = -Math.abs(s);
+    return { start, end, step: s };
+  };
+
   const handleSave = async () => {
+
      if (!canSave) {
       alert('Forma mora imati naziv i bar jedno pitanje.');
       return;
     }
+
     console.log('Pokušaj slanja forme...', { name, description, isPublic, questions });
 
     try {
@@ -110,6 +134,7 @@ function CreateFormPage() {
 
           // --- KLASIČNI CHOICE TIPOVI ---
           if (q.type === 'single_choice' || q.type === 'multiple_choice') {
+
             // 1) Prvo zadrži SAMO opcije koje stvarno šalješ na backend
             const keptOptions = (q.options || []).filter(
               (opt) => (opt?.text || '').trim() !== ''
@@ -134,6 +159,7 @@ function CreateFormPage() {
                 );
               }
             });
+
 
           }
 
@@ -226,12 +252,14 @@ function CreateFormPage() {
 
           {/* Akcije */}
           <div className="actions-col">
+
             <button onClick={handleSave} className="form-button" disabled={!canSave}>
               Sačuvaj formu
             </button>
             {!canSave && (
               <p className="form-error">Forma mora imati naziv i bar jedno pitanje.</p>
             )}
+
           </div>
         </div>
       </div>

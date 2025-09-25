@@ -1,5 +1,7 @@
 // src/pages/EditFormPage.jsx
+
 import React, { useEffect, useState, useRef } from 'react';
+
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import api from '../services/api';
 import FormBuilder from '../components/FormBuilder';
@@ -9,7 +11,9 @@ function EditFormPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation(); // koristiš li ?as_user=...
+
   const [deletedQuestionIds, setDeletedQuestionIds] = useState([]);
+
 
   const [form, setForm] = useState(null);
   const [questions, setQuestions] = useState([]);
@@ -18,6 +22,7 @@ function EditFormPage() {
   const canSave =
     Boolean((form?.name ?? '').trim()) &&
     ((questions?.filter(Boolean).length ?? 0) > 0);
+
 
   // --- helpers ---
 
@@ -158,8 +163,10 @@ function EditFormPage() {
       (q.options || []).forEach((opt) => {
         if (opt && typeof opt === 'object' && opt.image) {
           fd.append('option_images', opt.image);
+
         } else {
           fd.append('option_images', new Blob([], { type: 'application/octet-stream' }));
+
         }
       });
     }
@@ -236,10 +243,12 @@ function EditFormPage() {
 
   // --- čuvanje: meta + UPDATE postojećih + CREATE novih ---
   const handleSave = async () => {
+
      if (!canSave) {
     alert('Forma mora imati bar jedno pitanje.');
     return;
   }
+
     if (!form) return;
     try {
       // 1) meta
@@ -250,6 +259,7 @@ function EditFormPage() {
         is_locked: form.is_locked,
       });
 
+
       if (deletedQuestionIds.length) {
         await Promise.all(
           deletedQuestionIds.map((qid) =>
@@ -257,6 +267,7 @@ function EditFormPage() {
           )
         );
       }
+
       // 2) UPDATE svih postojećih pitanja (PUT JSON)
       const existing = questions.filter((q) => !!q.id);
       await Promise.all(
@@ -268,7 +279,9 @@ function EditFormPage() {
           )
         )
       );
+
         
+
       // 3) CREATE novih pitanja (POST multipart)
       const created = questions
         .map((q, index) => ({ q, index }))
@@ -313,7 +326,9 @@ function EditFormPage() {
   if (!form) return <p className="forms-empty">Forma nije pronađena.</p>;
 
   return (
+
      <div className="page">
+
       <div className="container">
         <div className="form-container">
           <h2>Izmeni formu</h2>
@@ -377,6 +392,7 @@ function EditFormPage() {
           {/* Pitanja */}
           <h3 className="section-title">Pitanja</h3>
           <div className="form-question-list">
+
             <FormBuilder
               questions={questions}
               setQuestions={setQuestions}
@@ -388,6 +404,7 @@ function EditFormPage() {
                 }
               }}
             />
+
           </div>
 
           {/* KOLABORATORI */}
@@ -396,12 +413,14 @@ function EditFormPage() {
 
           {/* Akcije */}
           <div className="actions-col">
+
             <button
               className="form-button"
               type="button"
               onClick={handleSave}
               disabled={!canSave}
             >
+
               Sačuvaj izmene
             </button>
 
@@ -420,4 +439,6 @@ function EditFormPage() {
   );
 }
 
+
 export default EditFormPage;
+
