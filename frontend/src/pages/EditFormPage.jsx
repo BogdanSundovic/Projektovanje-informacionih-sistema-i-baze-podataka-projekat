@@ -25,10 +25,6 @@ function EditFormPage() {
     ((questions?.filter(Boolean).length ?? 0) > 0);
 
 
-  const canSave =
-    Boolean((form?.name ?? '').trim()) &&
-    ((questions?.filter(Boolean).length ?? 0) > 0);
-
 
   // --- helpers ---
 
