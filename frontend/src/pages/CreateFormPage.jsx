@@ -7,6 +7,30 @@ function CreateFormPage() {
   const [description, setDescription] = useState('');
   const [isPublic, setIsPublic] = useState(false);
   const [questions, setQuestions] = useState([]);
+  const canSave = name.trim() !== '' && (questions?.filter(Boolean).length ?? 0) > 0;
+
+
+  // helper: parsiranje ručno unete liste brojeva
+  const parseNumericList = (txt, fallback = []) => {
+    if (!txt) return fallback;
+    return Array.from(
+      new Set(
+        txt
+          .replace(/,/g, ' ')
+          .split(/\s+/)
+          .map((s) => Number(s.trim()))
+          .filter(Number.isFinite)
+      )
+    ).sort((a, b) => a - b);
+  };
+
+  const normalizeRange = (start, end, step) => {
+    let s = Number(step);
+    if (!Number.isFinite(s) || s === 0) s = 1;
+    if (start < end && s < 0) s = Math.abs(s);
+    if (start > end && s > 0) s = -Math.abs(s);
+    return { start, end, step: s };
+  };
 
   // helper: parsiranje ručno unete liste brojeva
   const parseNumericList = (txt, fallback = []) => {
@@ -31,6 +55,12 @@ function CreateFormPage() {
   };
 
   const handleSave = async () => {
+
+     if (!canSave) {
+      alert('Forma mora imati naziv i bar jedno pitanje.');
+      return;
+    }
+
     console.log('Pokušaj slanja forme...', { name, description, isPublic, questions });
 
     try {
@@ -104,22 +134,33 @@ function CreateFormPage() {
 
           // --- KLASIČNI CHOICE TIPOVI ---
           if (q.type === 'single_choice' || q.type === 'multiple_choice') {
-            const optionList = (q.options || [])
-              .filter((opt) => (opt?.text || '').trim() !== '')
-              .map((opt) => ({ text: opt.text.trim() }));
 
-            fd.append('options', JSON.stringify(optionList));
+            // 1) Prvo zadrži SAMO opcije koje stvarno šalješ na backend
+            const keptOptions = (q.options || []).filter(
+              (opt) => (opt?.text || '').trim() !== ''
+            );
 
-            if (q.type === 'multiple_choice' && q.max_choices !== '' && q.max_choices != null) {
-              fd.append('max_choices', String(Number(q.max_choices)));
-            }
+            // 2) options JSON ide iz keptOptions
+            fd.append(
+              'options',
+              JSON.stringify(keptOptions.map((opt) => ({ text: opt.text.trim() })))
+            );
 
-            // slike opcija (ako postoje)
-            (q.options || []).forEach((opt) => {
+            // 3) option_images poravnaj 1:1 sa keptOptions
+            keptOptions.forEach((opt) => {
               if (opt && opt.image) {
                 fd.append('option_images', opt.image);
+              } else {
+                // KLJUČNO: prosledi prazan fajl sa PRAZNIM imenom → backend ga preskače
+                fd.append(
+                  'option_images',
+                  new Blob([], { type: 'application/octet-stream' }),
+                  '' // empty filename => falsy na backendu, neće se uploadovati
+                );
               }
             });
+
+
           }
 
           // Za short_text, long_text, date, datetime — nema dodatnih polja
@@ -211,9 +252,14 @@ function CreateFormPage() {
 
           {/* Akcije */}
           <div className="actions-col">
-            <button onClick={handleSave} className="form-button">
+
+            <button onClick={handleSave} className="form-button" disabled={!canSave}>
               Sačuvaj formu
             </button>
+            {!canSave && (
+              <p className="form-error">Forma mora imati naziv i bar jedno pitanje.</p>
+            )}
+
           </div>
         </div>
       </div>
