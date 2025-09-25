@@ -51,6 +51,8 @@ function App() {
         <Route path="/admin/users/:userId/edit" element={<AdminEditUserPage />} />
         <Route path="/" element={<PublicFormsPage />} />
         <Route path="*" element={<LoginPage />} /> {/* Baca na login */}
+        <Route path="/form/fill/:id" element={<FillFormPage />} />
+
 
       </Routes>
     </Router>

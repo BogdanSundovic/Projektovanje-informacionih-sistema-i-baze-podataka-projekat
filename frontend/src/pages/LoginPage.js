@@ -15,17 +15,19 @@ function LoginPage() {
         password
       });
 
-      localStorage.setItem('token', res.data.token || res.data.access_token);
-      window.location.href = '/dashboard';
-    } catch (err) {
-      console.error('Login greška:', err.response?.data || err.message);
-      const message =
-        err.response?.data?.detail ||
-        err.response?.data?.message ||
-        'Neuspešan login';
-      alert(message);
-    }
-  };
+        localStorage.setItem('token', res.data.token || res.data.access_token);
+        const params = new URLSearchParams(window.location.search);
+        const redirect = params.get('redirect');
+        window.location.href = redirect ? decodeURIComponent(redirect) : '/dashboard';
+      } catch (err) {
+        console.error('Login greška:', err.response?.data || err.message);
+        const message =
+          err.response?.data?.detail ||
+          err.response?.data?.message ||
+          'Neuspešan login';
+        alert(message);
+      }
+    };
 
   return (
     <div className="form-container">

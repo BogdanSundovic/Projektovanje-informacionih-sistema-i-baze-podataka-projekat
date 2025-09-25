@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import api from "../services/api";
 import "../styles/form.css";
+import { getFillPath } from "../utils/paths";
 
 const FillFormPage = () => {
   const { id } = useParams();
@@ -25,9 +26,16 @@ const FillFormPage = () => {
       try {
         const res = await api.get(`/forms/${id}`, withParams());
         setForm(res.data);
-      } catch (err) {
-        console.error("Greška pri dohvatanju forme:", err?.response?.status, err?.response?.data);
-      } finally {
+      }  catch (err) {
+          const status = err?.response?.status;
+          const token = localStorage.getItem('token');
+          if ((status === 401 || status === 403) && !token) {
+            const redirect = encodeURIComponent(getFillPath(id));
+            window.location.href = `/login?redirect=${redirect}`;
+            return;
+          }
+          console.error("Greška pri dohvatanju forme:", status, err?.response?.data);
+        } finally {
         setLoading(false);
       }
     })();
