@@ -9,7 +9,7 @@ function FormBuilder({ questions, setQuestions }) {
   const addQuestion = () => {
     setQuestions([
       ...questions,
- FrontEnd2
+//FrontEnd2
       { text: '', type: 'short_text', is_required: false, options: [] },
 
     ]);
