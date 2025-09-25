@@ -275,6 +275,7 @@ function QuestionField({ index, question, updateQuestion, removeQuestion, hideRe
       numeric_values: values,
       numeric_scale: null,
     });
+
   };
 
   return (
@@ -490,6 +491,7 @@ function QuestionField({ index, question, updateQuestion, removeQuestion, hideRe
           </button>
         </div>
       )}
+
     </div>
   );
 }
