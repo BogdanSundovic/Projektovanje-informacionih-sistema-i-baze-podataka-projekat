@@ -9,6 +9,7 @@ function FormBuilder({ questions, setQuestions,onRemoveQuestion = () => {} }) {
   const addQuestion = () => {
     setQuestions([
       ...questions,
+
       { text: '', type: 'short_text', is_required: false, options: [] },
 
     ]);
@@ -22,10 +23,12 @@ function FormBuilder({ questions, setQuestions,onRemoveQuestion = () => {} }) {
   };
 
   const removeQuestion = (index) => {
+
     const removed = questions[index];
     if (removed?.id) {
       onRemoveQuestion(removed); // više nije "no-undef"
     }
+
     const next = [...questions];
     next.splice(index, 1);
     setQuestions(next);
@@ -37,7 +40,9 @@ function FormBuilder({ questions, setQuestions,onRemoveQuestion = () => {} }) {
     const clone = {
       ...src,
       id: undefined, // novi entitet
+
       options: (src.options || []).map((o) => ({ ...o, id: undefined })),
+
     };
     const next = [...questions.slice(0, index + 1), clone, ...questions.slice(index + 1)];
     setQuestions(next);

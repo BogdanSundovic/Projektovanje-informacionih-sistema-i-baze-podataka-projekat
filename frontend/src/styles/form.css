@@ -254,7 +254,9 @@ button:active,
   border-radius: 10px;
   border: 1px solid var(--border);
   background: transparent;
+
   color: var(--text-opposite);
+
   cursor: pointer;
   white-space: nowrap;
 }
@@ -352,3 +354,4 @@ button:active,
 
 .form-button:disabled { opacity: .6; cursor: not-allowed; }
 .forms-search { margin: 12px 0 20px; }
+

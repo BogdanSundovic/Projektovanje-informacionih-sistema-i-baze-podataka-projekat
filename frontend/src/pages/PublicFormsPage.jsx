@@ -6,7 +6,9 @@ import "../styles/form.css";
 const PublicFormsPage = () => {
   const [forms, setForms] = useState([]);
   const [loading, setLoading] = useState(true);
+
   const [search, setSearch] = useState("");
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -26,6 +28,7 @@ const PublicFormsPage = () => {
   }, []);
 
   if (loading) return <p className="forms-loading">Učitavanje...</p>;
+
   const norm = (s) =>
     (s || "")
       .toString()
@@ -37,9 +40,11 @@ const PublicFormsPage = () => {
   const filtered = forms.filter((f) => norm(f.name).includes(norm(search)));
 
 
+
   return (
     <div className="forms-container">
       <h2 className="forms-title">Javne Forme</h2>
+
       <div className="forms-search">
         <input
           type="text"
@@ -56,6 +61,7 @@ const PublicFormsPage = () => {
       ) : (
         <div className="forms-grid">
           {filtered.map((form) => (
+
             <div key={form.id} className="form-card">
               <h3 className="form-card-title">{form.name}</h3>
               <p className="form-card-desc">{form.description}</p>
