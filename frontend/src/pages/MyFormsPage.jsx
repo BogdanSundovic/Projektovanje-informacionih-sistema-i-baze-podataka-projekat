@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 import "../styles/form.css";
 import { FaEdit, FaEye, FaList } from "react-icons/fa";
+import ShareLinkButton from '../components/ShareLinkButton';
 
 const ROLE_EDIT = new Set(["owner", "editor", "admin"]);
 const pickRole = (f) =>
@@ -100,11 +101,22 @@ const MyFormsPage = () => {
 
   const Card = ({ form }) => (
     <div key={form.id} className="form-card">
-      <h3 className="form-card-title">
-        {form.name}
-        {form.is_locked && <span className="badge badge-lock">Zaključana</span>}
-        {form.__role && <span className="badge" style={{ marginLeft: 6 }}>{form.__role}</span>}
-      </h3>
+      <div className="form-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h3 className="form-card-title">
+          {form.name}
+          {form.is_locked && <span className="badge badge-lock">Zaključana</span>}
+          {form.__role && <span className="badge" style={{ marginLeft: 6 }}>{form.__role}</span>}
+        </h3>
+        <button
+          type="button"
+          className="btn-share"
+          onClick={() => navigator.clipboard.writeText(`${window.location.origin}/form/view/${form.id}`).catch(() => {
+            window.prompt('Copy this link:', `${window.location.origin}/form/view/${form.id}`);
+          })}
+          title="Kopiraj link za popunjavanje"
+        >
+          Podeli
+        </button></div>
       <p className="form-card-desc">{form.description || "—"}</p>
       <div className="form-actions">
         {form.__canEdit && (

@@ -1,0 +1,1 @@
+export const getFillPath = (id) => `/form/fill/${id}`;

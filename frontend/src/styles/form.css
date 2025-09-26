@@ -254,6 +254,9 @@ button:active,
   border-radius: 10px;
   border: 1px solid var(--border);
   background: transparent;
+
+  color: var(--text-opposite);
+
   cursor: pointer;
   white-space: nowrap;
 }
@@ -348,4 +351,34 @@ button:active,
   border-color: color-mix(in oklab, #ef4444 30%, var(--border));
   color: #991b1b;
 }
+
+.form-button:disabled { opacity: .6; cursor: not-allowed; }
+.forms-search { margin: 12px 0 20px; }
+
+.btn-share {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border, #dcdcdc);
+  background: var(--surface, #fff);
+  cursor: pointer;
+}
+.btn-share:hover { background: var(--hover, #f5f5f5); }
+/* u form.css ili layout.css */
+.btn-share {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-opposite);
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border, #dcdcdc);
+  background: var(--surface, #fff);
+  cursor: pointer;
+}
+.btn-share:hover { background: var(--hover, #f5f5f5); }
+
+
 
