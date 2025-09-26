@@ -1,0 +1,87 @@
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin123
+      POSTGRES_DB: baze2_db
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d baze2_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    env_file:
+      - .env
+    environment:
+      # Konektuj se na TVOJU (host) bazu
+      DATABASE_URL: postgresql+psycopg2://postgres:admin123@host.docker.internal:5432/baze2_db
+      # (opciono) ostale varijable preuzmi iz .env-a
+      SECRET_KEY: ${SECRET_KEY}
+      ALGORITHM: ${ALGORITHM}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES}
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
+    depends_on: []   # backend se NE oslanja na docker-db
+    ports:
+      - "18088:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        REACT_APP_API_URL: http://localhost:18088
+        VITE_API_URL: http://localhost:18088
+    ports:
+      - "13008:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "[ -f /usr/share/nginx/html/index.html ]"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+
+  health-monitor:
+    image: curlimages/curl:latest
+    depends_on:
+      db:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+    command: >
+      sh -c "
+        while true; do
+          echo '=== Network Health Check ==='
+          echo 'Backend health:' && curl -f http://backend:8000/health || echo 'Backend failed'
+          echo 'Frontend:' && curl -f http://frontend/ || echo 'Frontend failed'
+          echo '========================='
+          sleep 60
+        done
+      "
+    restart: unless-stopped
+
+volumes:
+  db-data:

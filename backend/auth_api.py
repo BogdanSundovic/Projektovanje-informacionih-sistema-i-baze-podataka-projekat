@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends, APIRouter
+from fastapi import FastAPI, HTTPException, Depends, APIRouter, Response
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -20,6 +20,7 @@ from backend.form import *
 
 load_dotenv()
 
+
 # Config
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
@@ -30,12 +31,21 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origin_regex=".*",   # prihvati svaki Origin
+    allow_credentials=True,    # dozvoli cookies/Authorization header
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+origins = os.getenv("CORS_ORIGINS", "http://localhost:13008,http://127.0.0.1:13008,http://localhost:3000,http://127.0.0.1:3000")
+origins = [o.strip() for o in origins.split(",") if o.strip()]
+health = APIRouter()
+@health.get("/health", include_in_schema=False)
+def healthcheck():
+    # 204 = no body; ili vrati {"status": "ok"} sa 200 ako više voliš
+    return Response(status_code=204)
+
+app.include_router(health)
 # Password Hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
