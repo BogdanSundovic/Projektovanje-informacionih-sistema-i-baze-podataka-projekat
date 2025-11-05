@@ -1,10 +1,14 @@
 # Projektovanje Informacionih Sistema i Baze Podataka - Projekat
 
-> 🌐 [English version](../README.en.md)
+> 🌐 **Language / Jezik**: [🇷🇸 Srpski](./frontend/README.md) | [🇬🇧 English](./README.en.md)
 
 Sistem za kreiranje i upravljanje formama - web aplikacija koja omogućava korisnicima da kreiraju, dele, popunjavaju i analiziraju forme sa različitim tipovima pitanja.
 
-## 📋 Sadržaj
+*Form creation and management system - a web application that enables users to create, share, fill out, and analyze forms with various question types.*
+
+---
+
+## 📋 Sadržaj / Table of Contents
 
 - [Opis Projekta](#opis-projekta)
 - [Funkcionalnosti](#funkcionalnosti)
@@ -82,6 +86,7 @@ Aplikacija omogućava:
 cd backend
 python -m venv venv
 venv\Scripts\activate  # Na Windows
+# source venv/bin/activate  # Na Linux/Mac
 pip install -r requirements.txt
 ```
 
